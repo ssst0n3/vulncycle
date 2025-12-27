@@ -68,42 +68,43 @@ English Draft:
 
 1. **创建临时文件**：使用文件编辑工具（如 `write`）直接将完整的提交信息写入 `.commit-message` 文件
    - **禁止使用**：`echo`、`printf` 等 shell 命令（可能遇到引号转义问题）
-   - **必须使用**：文件编辑工具（`write`）直接写入文件内容，确保内容与 **English Draft** 完全一致
+   - **必须使用**：文件编辑工具（`write`）直接写入文件内容
 2. **使用文件提交**：执行 `git commit -F .commit-message`
 3. **清理文件**：提交完成后删除 `.commit-message` 文件
 
-### 5.3 示例
+### 5.3 严格一致性
 
-```bash
-# 错误方式 1：命令行直接提交（可能导致引号转义问题）
-git commit -m "feat(api): add user authentication"
-
-# 错误方式 2：使用 echo 命令写入文件（也可能遇到引号转义问题）
-echo "feat(api): add user authentication
-..." > .commit-message
-
-# 正确方式：使用文件编辑工具直接创建文件，然后提交
-# 步骤 1: 使用 write 工具创建 .commit-message 文件（内容直接写入，无引号转义问题）
-# 步骤 2: git commit -F .commit-message
-# 步骤 3: rm .commit-message
-```
-
-### 5.4 严格一致性
-
-- **严格一致性**：如果用户回复"确认"、"是"或类似肯定的指令，你执行 `git commit` 时使用的信息必须与你在 **English Draft** 中展示的内容**完全一致**（字面量匹配）。
-- **禁止篡改**：在用户确认后，**绝对禁止**对提交信息进行任何形式的修改、润色、缩减或重新格式化。
-- **所见即所得**：用户看到什么，就必须提交什么。
+如果用户回复"确认"、"是"或类似肯定的指令，执行 `git commit` 时使用的信息必须与 **English Draft** 中展示的内容**完全一致**（字面量匹配）。**禁止**在用户确认后对提交信息进行任何形式的修改、润色、缩减或重新格式化。
 
 ---
 
 **正确行为示例：**
 
-*输入*：用户添加了逻辑，如果 `.env` 中存在 `SKIP_SSH_CONFIG=true` 则跳过 SSH 配置。
+**示例 1：简单场景（仅标题行）**
+
+*场景*：修复按钮点击时的样式问题。
 
 *输出*：
 Review / 确认:
-中文摘要: 在 SSH 配置生成脚本中添加跳过功能，支持通过 .env 文件中的 `SKIP_SSH_CONFIG=true` 环境变量来跳过指定项目的 SSH 配置生成。
+中文摘要: 修复按钮点击时的样式问题，确保点击状态下的视觉反馈正确显示。
 English Draft:
-feat(ssh): add skip option for config generation
+fix(ui): correct button click style feedback
 
-Introduces support for skipping SSH config generation via the `SKIP_SSH_CONFIG=true` environment variable in .env files. This applies to both Kubernetes and vulnerability project configurations.
+---
+
+**示例 2：复杂场景（需要 Body，包含技术细节）**
+
+*场景*：修复 API 认证 token 过期处理，涉及多个文件和函数修改。
+
+*输出*：
+Review / 确认:
+中文摘要: 修复 API 认证 token 过期处理问题。在 `src/api/auth.ts` 的 `validateToken()` 函数中添加了 token 过期检查逻辑，当 token 超过 `JWT_EXPIRY_TIME` 环境变量设置的过期时间（默认 3600 秒）时，自动调用 `refreshToken()` 刷新 token。同时更新了 `src/config.ts` 中的 `getAuthConfig()` 函数以正确读取 `JWT_EXPIRY_TIME` 配置。
+English Draft:
+fix(auth): handle token expiration with auto-refresh
+
+Adds expiration check logic in `validateToken()` function within
+`src/api/auth.ts`. When token exceeds the expiry time set by
+`JWT_EXPIRY_TIME` environment variable (default: 3600 seconds),
+automatically calls `refreshToken()` to refresh the token. Also updates
+`getAuthConfig()` function in `src/config.ts` to correctly read the
+`JWT_EXPIRY_TIME` configuration.
