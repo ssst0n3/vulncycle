@@ -55,7 +55,42 @@ English Draft:
 ```
 
 ## 5. 提交执行协议 (Commit Execution Protocol)
-- **严格一致性**：如果用户回复“确认”、“是”或类似肯定的指令，你执行 `git commit` 时使用的信息必须与你在 **English Draft** 中展示的内容**完全一致**（字面量匹配）。
+
+### 5.1 使用文件方式提交 (File-based Commit)
+
+**必须使用文件方式提交，避免命令行引号问题。**
+
+- **禁止使用**：`git commit -m "message"` 或 `git commit -m 'message'`
+- **必须使用**：`git commit -F <file>` 从文件读取提交信息
+- **提交信息文件**：使用 `.commit-message` 作为临时文件路径（项目根目录下）
+
+### 5.2 执行流程
+
+1. **创建临时文件**：使用文件编辑工具（如 `write`）直接将完整的提交信息写入 `.commit-message` 文件
+   - **禁止使用**：`echo`、`printf` 等 shell 命令（可能遇到引号转义问题）
+   - **必须使用**：文件编辑工具（`write`）直接写入文件内容，确保内容与 **English Draft** 完全一致
+2. **使用文件提交**：执行 `git commit -F .commit-message`
+3. **清理文件**：提交完成后删除 `.commit-message` 文件
+
+### 5.3 示例
+
+```bash
+# 错误方式 1：命令行直接提交（可能导致引号转义问题）
+git commit -m "feat(api): add user authentication"
+
+# 错误方式 2：使用 echo 命令写入文件（也可能遇到引号转义问题）
+echo "feat(api): add user authentication
+..." > .commit-message
+
+# 正确方式：使用文件编辑工具直接创建文件，然后提交
+# 步骤 1: 使用 write 工具创建 .commit-message 文件（内容直接写入，无引号转义问题）
+# 步骤 2: git commit -F .commit-message
+# 步骤 3: rm .commit-message
+```
+
+### 5.4 严格一致性
+
+- **严格一致性**：如果用户回复"确认"、"是"或类似肯定的指令，你执行 `git commit` 时使用的信息必须与你在 **English Draft** 中展示的内容**完全一致**（字面量匹配）。
 - **禁止篡改**：在用户确认后，**绝对禁止**对提交信息进行任何形式的修改、润色、缩减或重新格式化。
 - **所见即所得**：用户看到什么，就必须提交什么。
 
