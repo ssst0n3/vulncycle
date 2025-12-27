@@ -37,6 +37,9 @@ function initApp(): void {
 
   // 加载模板内容
   loadTemplate(editor, previewContent);
+
+  // 初始化全屏功能
+  initFullscreen();
 }
 
 // 加载模板
@@ -58,6 +61,43 @@ async function loadTemplate(
     console.log('无法加载模板文件，使用空编辑器');
     renderLifecycleView('', previewContent);
   }
+}
+
+// 初始化全屏功能
+function initFullscreen(): void {
+  const fullscreenBtn = document.getElementById('fullscreen-btn');
+  const editorContainer = document.getElementById('editor-container');
+
+  if (!fullscreenBtn || !editorContainer) {
+    console.error('Fullscreen elements not found');
+    return;
+  }
+
+  // 切换全屏状态
+  fullscreenBtn.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+      // 进入全屏
+      editorContainer.requestFullscreen().catch((err) => {
+        console.error('Error attempting to enable fullscreen:', err);
+      });
+    } else {
+      // 退出全屏
+      document.exitFullscreen().catch((err) => {
+        console.error('Error attempting to exit fullscreen:', err);
+      });
+    }
+  });
+
+  // 监听全屏状态变化，更新按钮图标
+  document.addEventListener('fullscreenchange', () => {
+    if (document.fullscreenElement) {
+      fullscreenBtn.classList.add('active');
+      editorContainer.classList.add('fullscreen-active');
+    } else {
+      fullscreenBtn.classList.remove('active');
+      editorContainer.classList.remove('fullscreen-active');
+    }
+  });
 }
 
 // 页面加载完成后初始化
