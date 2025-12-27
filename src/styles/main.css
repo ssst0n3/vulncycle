@@ -1,0 +1,475 @@
+/* CSS 变量定义 */
+:root {
+  /* 主色调 */
+  --color-primary: #667eea;
+  --color-primary-dark: #5568d3;
+  --color-secondary: #764ba2;
+  
+  /* 渐变色 */
+  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-stage-1: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-stage-2: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --gradient-stage-3: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  --gradient-stage-4: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  --gradient-stage-5: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  --gradient-stage-6: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
+  --gradient-stage-7: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+  --gradient-stage-8: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+  --gradient-stage-9: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+  
+  /* 边框颜色 */
+  --border-color-stage-1: #667eea;
+  --border-color-stage-2: #f5576c;
+  --border-color-stage-3: #4facfe;
+  --border-color-stage-4: #43e97b;
+  --border-color-stage-5: #fa709a;
+  --border-color-stage-6: #30cfd0;
+  --border-color-stage-7: #fed6e3;
+  --border-color-stage-8: #ff9a9e;
+  --border-color-stage-9: #fcb69f;
+  
+  /* 背景色 */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-dark: #282c34;
+  --bg-code: #f4f4f4;
+  --bg-code-block: #282c34;
+  
+  /* 文字颜色 */
+  --text-primary: #333;
+  --text-secondary: #555;
+  --text-muted: #999;
+  --text-light: #abb2bf;
+  --text-white: #ffffff;
+  
+  /* 阴影 */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.3);
+  --shadow-indicator: 0 4px 10px rgba(102, 126, 234, 0.4);
+  
+  /* 间距 */
+  --spacing-xs: 8px;
+  --spacing-sm: 15px;
+  --spacing-md: 20px;
+  --spacing-lg: 30px;
+  --spacing-xl: 40px;
+  
+  /* 圆角 */
+  --radius-sm: 3px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 50%;
+  
+  /* 字体 */
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  --font-family-mono: 'Courier New', monospace;
+  
+  /* 过渡 */
+  --transition-fast: 0.2s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow: 0.5s ease;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-family);
+  background: var(--gradient-primary);
+  min-height: 100vh;
+  color: var(--text-primary);
+}
+
+.container {
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: var(--spacing-md);
+}
+
+header {
+  text-align: center;
+  color: var(--text-white);
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-md);
+}
+
+header h1 {
+  font-size: 2.5em;
+  margin-bottom: 10px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.subtitle {
+  font-size: 1.1em;
+  opacity: 0.9;
+}
+
+.editor-container {
+  display: flex;
+  gap: var(--spacing-md);
+  height: calc(100vh - 200px);
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.editor-panel,
+.preview-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary);
+  min-height: 0;
+}
+
+.panel-header {
+  background: var(--gradient-primary);
+  color: var(--text-white);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-weight: 600;
+  font-size: 1.1em;
+}
+
+#markdown-editor-container {
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+  position: relative;
+}
+
+.preview-content {
+  flex: 1;
+  padding: var(--spacing-lg);
+  overflow-y: auto;
+  background: var(--bg-primary);
+}
+
+/* 生命周期样式 */
+.lifecycle-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.lifecycle-title {
+  font-size: 2em;
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-lg);
+  text-align: center;
+  padding-bottom: var(--spacing-md);
+  border-bottom: 3px solid var(--color-primary);
+}
+
+.lifecycle-stages {
+  position: relative;
+  padding: var(--spacing-xl) 0;
+}
+
+.lifecycle-stage {
+  position: relative;
+  margin-bottom: 50px;
+  padding-left: 60px;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: fadeInUp 0.4s ease forwards;
+  will-change: opacity, transform;
+}
+
+/* 如果用户偏好减少动画，直接显示内容 */
+@media (prefers-reduced-motion: reduce) {
+  .lifecycle-stage {
+    opacity: 1;
+    transform: translateY(0);
+    animation: none;
+  }
+}
+
+.lifecycle-stage:nth-child(1) {
+  animation-delay: 0.05s;
+}
+.lifecycle-stage:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.lifecycle-stage:nth-child(3) {
+  animation-delay: 0.15s;
+}
+.lifecycle-stage:nth-child(4) {
+  animation-delay: 0.2s;
+}
+.lifecycle-stage:nth-child(5) {
+  animation-delay: 0.25s;
+}
+.lifecycle-stage:nth-child(6) {
+  animation-delay: 0.3s;
+}
+.lifecycle-stage:nth-child(7) {
+  animation-delay: 0.35s;
+}
+.lifecycle-stage:nth-child(8) {
+  animation-delay: 0.4s;
+}
+.lifecycle-stage:nth-child(9) {
+  animation-delay: 0.45s;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stage-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  background: var(--gradient-stage-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-white);
+  font-weight: bold;
+  font-size: 1.1em;
+  box-shadow: var(--shadow-indicator);
+}
+
+.stage-indicator::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 2px;
+  height: 60px;
+  background: linear-gradient(to bottom, rgba(102, 126, 234, 0.6), transparent);
+  transform: translateX(-50%);
+}
+
+.lifecycle-stage:last-child .stage-indicator::after {
+  display: none;
+}
+
+.stage-content {
+  background: var(--bg-secondary);
+  border-left: 4px solid var(--border-color-stage-1);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.stage-content:hover {
+  transform: translateX(5px);
+  box-shadow: var(--shadow-md);
+}
+
+.stage-header {
+  font-size: 1.5em;
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-sm);
+  font-weight: 600;
+}
+
+.stage-body {
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+
+.stage-body h1,
+.stage-body h2,
+.stage-body h3,
+.stage-body h4 {
+  color: var(--text-primary);
+  margin-top: var(--spacing-md);
+  margin-bottom: 10px;
+}
+
+.stage-body h1 {
+  font-size: 1.8em;
+  border-bottom: 2px solid var(--color-primary);
+  padding-bottom: 10px;
+}
+
+.stage-body h2 {
+  font-size: 1.5em;
+  color: var(--color-primary);
+}
+
+.stage-body h3 {
+  font-size: 1.3em;
+}
+
+.stage-body p {
+  margin-bottom: var(--spacing-sm);
+}
+
+.stage-body ul,
+.stage-body ol {
+  margin-left: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+}
+
+.stage-body li {
+  margin-bottom: var(--spacing-xs);
+}
+
+.stage-body code {
+  background: var(--bg-code);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-family-mono);
+  color: #e83e8c;
+}
+
+.stage-body pre {
+  background: var(--bg-code-block);
+  color: var(--text-light);
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  margin: var(--spacing-sm) 0;
+}
+
+.stage-body pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+
+.stage-body blockquote {
+  border-left: 4px solid var(--color-primary);
+  padding-left: var(--spacing-md);
+  margin: var(--spacing-sm) 0;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.stage-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--spacing-sm) 0;
+}
+
+.stage-body th,
+.stage-body td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.stage-body th {
+  background: var(--color-primary);
+  color: var(--text-white);
+  font-weight: 600;
+}
+
+.stage-body tr:hover {
+  background: var(--bg-secondary);
+}
+
+/* 特定阶段的颜色标识 */
+.lifecycle-stage[data-stage='1'] .stage-indicator {
+  background: var(--gradient-stage-1);
+}
+.lifecycle-stage[data-stage='1'] .stage-content {
+  border-left-color: var(--border-color-stage-1);
+}
+
+.lifecycle-stage[data-stage='2'] .stage-indicator {
+  background: var(--gradient-stage-2);
+}
+.lifecycle-stage[data-stage='2'] .stage-content {
+  border-left-color: var(--border-color-stage-2);
+}
+
+.lifecycle-stage[data-stage='3'] .stage-indicator {
+  background: var(--gradient-stage-3);
+}
+.lifecycle-stage[data-stage='3'] .stage-content {
+  border-left-color: var(--border-color-stage-3);
+}
+
+.lifecycle-stage[data-stage='4'] .stage-indicator {
+  background: var(--gradient-stage-4);
+}
+.lifecycle-stage[data-stage='4'] .stage-content {
+  border-left-color: var(--border-color-stage-4);
+}
+
+.lifecycle-stage[data-stage='5'] .stage-indicator {
+  background: var(--gradient-stage-5);
+}
+.lifecycle-stage[data-stage='5'] .stage-content {
+  border-left-color: var(--border-color-stage-5);
+}
+
+.lifecycle-stage[data-stage='6'] .stage-indicator {
+  background: var(--gradient-stage-6);
+}
+.lifecycle-stage[data-stage='6'] .stage-content {
+  border-left-color: var(--border-color-stage-6);
+}
+
+.lifecycle-stage[data-stage='7'] .stage-indicator {
+  background: var(--gradient-stage-7);
+}
+.lifecycle-stage[data-stage='7'] .stage-content {
+  border-left-color: var(--border-color-stage-7);
+}
+
+.lifecycle-stage[data-stage='8'] .stage-indicator {
+  background: var(--gradient-stage-8);
+}
+.lifecycle-stage[data-stage='8'] .stage-content {
+  border-left-color: var(--border-color-stage-8);
+}
+
+.lifecycle-stage[data-stage='9'] .stage-indicator {
+  background: var(--gradient-stage-9);
+}
+.lifecycle-stage[data-stage='9'] .stage-content {
+  border-left-color: var(--border-color-stage-9);
+}
+
+/* 响应式设计 */
+@media (max-width: 1024px) {
+  .editor-container {
+    flex-direction: column;
+    height: auto;
+    min-height: calc(100vh - 200px);
+  }
+
+  .editor-panel,
+  .preview-panel {
+    min-height: 400px;
+  }
+}
+
+/* 滚动条样式 */
+.preview-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.preview-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.preview-content::-webkit-scrollbar-thumb {
+  background: var(--color-primary);
+  border-radius: 4px;
+}
+
+.preview-content::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary-dark);
+}
