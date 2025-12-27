@@ -351,11 +351,64 @@ header h1 {
   color: var(--color-primary);
   margin-bottom: var(--spacing-sm);
   font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+  transition: color var(--transition-fast);
+}
+
+.stage-header:hover {
+  color: var(--color-primary-dark);
+}
+
+.stage-header-title {
+  flex: 1;
+}
+
+.stage-toggle-icon {
+  font-size: 0.8em;
+  transition: transform var(--transition-normal);
+  margin-left: var(--spacing-sm);
+}
+
+.stage-summary {
+  color: var(--text-muted);
+  font-size: 0.9em;
+  line-height: 1.6;
+  margin-bottom: var(--spacing-sm);
+  padding: var(--spacing-xs) 0;
+  font-style: italic;
 }
 
 .stage-body {
   color: var(--text-secondary);
   line-height: 1.8;
+  overflow: hidden;
+  transition: max-height var(--transition-normal), opacity var(--transition-normal), margin-top var(--transition-normal);
+}
+
+/* 默认折叠状态（collapsed） */
+.lifecycle-stage.collapsed .stage-body {
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
+}
+
+/* 展开状态（expanded） */
+.lifecycle-stage.expanded .stage-body {
+  max-height: 10000px;
+  opacity: 1;
+  margin-top: var(--spacing-sm);
+}
+
+.lifecycle-stage.collapsed .stage-summary {
+  display: block;
+}
+
+.lifecycle-stage.expanded .stage-summary {
+  display: none;
 }
 
 .stage-body h1,

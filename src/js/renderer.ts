@@ -8,6 +8,41 @@ export function escapeHtml(text: string): string {
   return div.innerHTML;
 }
 
+// 提取内容摘要（精简信息）
+function extractSummary(content: string, maxLength: number = 100): string {
+  if (!content.trim()) return '';
+  
+  // 移除 markdown 语法标记，只保留文本
+  const text = content
+    .replace(/^#{1,6}\s+/gm, '') // 移除标题标记
+    .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // 移除链接，保留文本
+    .replace(/`([^`]+)`/g, '$1') // 移除行内代码标记
+    .replace(/\*\*([^*]+)\*\*/g, '$1') // 移除加粗标记
+    .replace(/\*([^*]+)\*/g, '$1') // 移除斜体标记
+    .replace(/^\s*[-*+]\s+/gm, '') // 移除列表标记
+    .replace(/^\s*\d+\.\s+/gm, '') // 移除有序列表标记
+    .trim();
+  
+  // 提取第一段或前几行
+  const lines = text.split('\n').filter(line => line.trim());
+  if (lines.length === 0) return '';
+  
+  let summary = lines[0];
+  for (let i = 1; i < Math.min(lines.length, 3); i++) {
+    if ((summary + ' ' + lines[i]).length <= maxLength) {
+      summary += ' ' + lines[i];
+    } else {
+      break;
+    }
+  }
+  
+  if (summary.length > maxLength) {
+    summary = summary.substring(0, maxLength) + '...';
+  }
+  
+  return summary;
+}
+
 // 配置 marked 解析器
 marked.setOptions({
   breaks: true,
@@ -64,11 +99,19 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
     stages.forEach((stage: LifecycleStage) => {
       const stageNum = stage.stageNum ?? '?';
       const content = stage.content.trim();
+      const summary = extractSummary(content);
 
-      html += `<div class="lifecycle-stage" data-stage="${stageNum}">`;
+      html += `<div class="lifecycle-stage collapsed" data-stage="${stageNum}">`;
       html += `<div class="stage-indicator">${stageNum}</div>`;
       html += '<div class="stage-content">';
-      html += `<div class="stage-header">${escapeHtml(stage.title)}</div>`;
+      html += '<div class="stage-header">';
+      html += '<span class="stage-header-title">' + escapeHtml(stage.title) + '</span>';
+      html += '<span class="stage-toggle-icon">▼</span>';
+      html += '</div>';
+      
+      if (summary) {
+        html += `<div class="stage-summary">${escapeHtml(summary)}</div>`;
+      }
 
       if (content) {
         html += `<div class="stage-body">${marked.parse(content)}</div>`;

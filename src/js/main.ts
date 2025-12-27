@@ -21,6 +21,7 @@ function initApp(): void {
     }
     updateTimer = setTimeout(() => {
       renderLifecycleView(markdown, previewContent);
+      initStageToggle(); // 初始化折叠/展开功能
     }, 300); // 防抖，300ms 延迟
   };
 
@@ -34,6 +35,7 @@ function initApp(): void {
 
   // 初始渲染
   renderLifecycleView(editor.state.doc.toString(), previewContent);
+  initStageToggle(); // 初始化折叠/展开功能
 
   // 加载模板内容
   loadTemplate(editor, previewContent);
@@ -57,10 +59,32 @@ async function loadTemplate(
       changes: { from: 0, to: editor.state.doc.length, insert: text },
     });
     renderLifecycleView(text, previewContent);
+    initStageToggle(); // 初始化折叠/展开功能
   } catch (err) {
     console.log('无法加载模板文件，使用空编辑器');
     renderLifecycleView('', previewContent);
   }
+}
+
+// 初始化章节折叠/展开功能
+function initStageToggle(): void {
+  const stageHeaders = document.querySelectorAll('.stage-header');
+  
+  stageHeaders.forEach((header) => {
+    header.addEventListener('click', () => {
+      const stage = header.closest('.lifecycle-stage');
+      if (stage) {
+        stage.classList.toggle('collapsed');
+        stage.classList.toggle('expanded');
+        
+        // 更新图标
+        const icon = header.querySelector('.stage-toggle-icon');
+        if (icon) {
+          icon.textContent = stage.classList.contains('collapsed') ? '▼' : '▲';
+        }
+      }
+    });
+  });
 }
 
 // 初始化全屏功能
