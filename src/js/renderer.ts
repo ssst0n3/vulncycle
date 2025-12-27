@@ -102,7 +102,7 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
       const summary = extractSummary(content);
 
       html += `<div class="lifecycle-stage collapsed" data-stage="${stageNum}">`;
-      html += `<div class="stage-indicator">${stageNum}</div>`;
+      html += `<div class="stage-indicator"></div>`;
       html += '<div class="stage-content">';
       html += '<div class="stage-header">';
       html += '<span class="stage-header-title">' + escapeHtml(stage.title) + '</span>';
