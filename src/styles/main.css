@@ -217,7 +217,7 @@ header h1 {
 
 .preview-content {
   flex: 1;
-  padding: var(--spacing-lg);
+  padding: var(--spacing-sm);
   overflow-y: auto;
   background: var(--bg-primary);
 }
@@ -229,23 +229,23 @@ header h1 {
 }
 
 .lifecycle-title {
-  font-size: 2em;
+  font-size: 1.6em;
   color: var(--color-primary);
-  margin-bottom: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
   text-align: center;
-  padding-bottom: var(--spacing-md);
-  border-bottom: 3px solid var(--color-primary);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 2px solid var(--color-primary);
 }
 
 .lifecycle-stages {
   position: relative;
-  padding: var(--spacing-xl) 0;
+  padding: var(--spacing-md) 0;
 }
 
 .lifecycle-stage {
   position: relative;
-  margin-bottom: 50px;
-  padding-left: 60px;
+  margin-bottom: 25px;
+  padding-left: 50px;
   opacity: 0;
   transform: translateY(20px);
   animation: fadeInUp 0.4s ease forwards;
@@ -304,8 +304,8 @@ header h1 {
   position: absolute;
   left: 0;
   top: 0;
-  width: 40px;
-  height: 40px;
+  width: 35px;
+  height: 35px;
   border-radius: var(--radius-full);
   background: var(--gradient-stage-1);
   display: flex;
@@ -313,7 +313,7 @@ header h1 {
   justify-content: center;
   color: var(--text-white);
   font-weight: bold;
-  font-size: 1.1em;
+  font-size: 1em;
   box-shadow: var(--shadow-indicator);
 }
 
@@ -323,7 +323,7 @@ header h1 {
   left: 50%;
   top: 100%;
   width: 2px;
-  height: 60px;
+  height: 30px;
   background: linear-gradient(to bottom, rgba(102, 126, 234, 0.6), transparent);
   transform: translateX(-50%);
 }
@@ -334,8 +334,8 @@ header h1 {
 
 .stage-content {
   background: var(--bg-secondary);
-  border-left: 4px solid var(--border-color-stage-1);
-  padding: var(--spacing-md);
+  border-left: 3px solid var(--border-color-stage-1);
+  padding: var(--spacing-sm);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   transition: transform var(--transition-normal), box-shadow var(--transition-normal);
@@ -347,9 +347,9 @@ header h1 {
 }
 
 .stage-header {
-  font-size: 1.5em;
+  font-size: 1.2em;
   color: var(--color-primary);
-  margin-bottom: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -375,16 +375,17 @@ header h1 {
 
 .stage-summary {
   color: var(--text-muted);
-  font-size: 0.9em;
-  line-height: 1.6;
-  margin-bottom: var(--spacing-sm);
-  padding: var(--spacing-xs) 0;
+  font-size: 0.85em;
+  line-height: 1.5;
+  margin-bottom: var(--spacing-xs);
+  padding: 4px 0;
   font-style: italic;
 }
 
 .stage-body {
   color: var(--text-secondary);
-  line-height: 1.8;
+  line-height: 1.6;
+  font-size: 0.95em;
   overflow: hidden;
   transition: max-height var(--transition-normal), opacity var(--transition-normal), margin-top var(--transition-normal);
 }
@@ -400,7 +401,7 @@ header h1 {
 .lifecycle-stage.expanded .stage-body {
   max-height: 10000px;
   opacity: 1;
-  margin-top: var(--spacing-sm);
+  margin-top: var(--spacing-xs);
 }
 
 .lifecycle-stage.collapsed .stage-summary {
@@ -416,37 +417,37 @@ header h1 {
 .stage-body h3,
 .stage-body h4 {
   color: var(--text-primary);
-  margin-top: var(--spacing-md);
-  margin-bottom: 10px;
+  margin-top: var(--spacing-sm);
+  margin-bottom: 8px;
 }
 
 .stage-body h1 {
-  font-size: 1.8em;
+  font-size: 1.5em;
   border-bottom: 2px solid var(--color-primary);
-  padding-bottom: 10px;
+  padding-bottom: 6px;
 }
 
 .stage-body h2 {
-  font-size: 1.5em;
+  font-size: 1.3em;
   color: var(--color-primary);
 }
 
 .stage-body h3 {
-  font-size: 1.3em;
+  font-size: 1.15em;
 }
 
 .stage-body p {
-  margin-bottom: var(--spacing-sm);
+  margin-bottom: 10px;
 }
 
 .stage-body ul,
 .stage-body ol {
   margin-left: var(--spacing-md);
-  margin-bottom: var(--spacing-sm);
+  margin-bottom: 10px;
 }
 
 .stage-body li {
-  margin-bottom: var(--spacing-xs);
+  margin-bottom: 6px;
 }
 
 .stage-body code {
@@ -460,10 +461,11 @@ header h1 {
 .stage-body pre {
   background: var(--bg-code-block);
   color: var(--text-light);
-  padding: var(--spacing-sm);
+  padding: var(--spacing-xs);
   border-radius: var(--radius-md);
   overflow-x: auto;
-  margin: var(--spacing-sm) 0;
+  margin: 10px 0;
+  font-size: 0.9em;
 }
 
 .stage-body pre code {
@@ -473,9 +475,9 @@ header h1 {
 }
 
 .stage-body blockquote {
-  border-left: 4px solid var(--color-primary);
-  padding-left: var(--spacing-md);
-  margin: var(--spacing-sm) 0;
+  border-left: 3px solid var(--color-primary);
+  padding-left: var(--spacing-sm);
+  margin: 10px 0;
   color: var(--text-secondary);
   font-style: italic;
 }
@@ -483,12 +485,13 @@ header h1 {
 .stage-body table {
   width: 100%;
   border-collapse: collapse;
-  margin: var(--spacing-sm) 0;
+  margin: 10px 0;
+  font-size: 0.9em;
 }
 
 .stage-body th,
 .stage-body td {
-  padding: 12px;
+  padding: 8px;
   text-align: left;
   border-bottom: 1px solid #ddd;
 }
