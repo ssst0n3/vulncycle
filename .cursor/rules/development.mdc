@@ -1,0 +1,42 @@
+---
+alwaysApply: true
+---
+
+# 开发规范规则 (Development Standards Rule)
+
+## npm 依赖管理规范
+
+**禁止直接在项目根目录执行 `npm install` 命令。**
+
+### 核心要求
+
+- **不允许**：在项目本地环境中直接运行 `npm install`
+- **允许**：在容器环境中执行 `npm install`
+
+### 原因
+
+- 避免在本地环境中安装依赖，防止污染项目目录
+- 保持依赖管理与容器化部署的一致性
+- 确保所有依赖都通过容器环境管理
+
+### 执行方式
+
+如果需要安装或更新依赖：
+
+1. **在容器中执行**：
+   - 使用 `docker-compose exec` 进入容器后执行
+   - 或在 Dockerfile 构建过程中安装
+   - 或使用项目提供的 make 命令（如果配置了相关命令）
+
+2. **示例**：
+   ```bash
+   # 进入容器后执行
+   docker-compose exec <service_name> npm install
+   
+   # 或使用 make 命令（如果存在）
+   make npm-install
+   ```
+
+---
+
+**目标**：保持项目环境的干净和一致性，确保依赖管理完全容器化。
