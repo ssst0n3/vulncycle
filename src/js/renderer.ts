@@ -8,6 +8,108 @@ export function escapeHtml(text: string): string {
   return div.innerHTML;
 }
 
+// 时间信息接口
+export interface TimeInfo {
+  label: string;
+  value: string;
+  timestamp: number | null; // 用于排序的时间戳，null 表示无法解析
+}
+
+// 解析日期字符串为时间戳
+function parseDate(dateStr: string): number | null {
+  if (!dateStr || dateStr.includes('需要修改') || dateStr.includes('待填写')) {
+    return null;
+  }
+  
+  // 移除可能的括号内容
+  dateStr = dateStr.replace(/\s*\([^)]*\)\s*$/, '').trim();
+  
+  // 尝试多种日期格式
+  const formats = [
+    /^(\d{4})-(\d{1,2})-(\d{1,2})$/, // YYYY-MM-DD
+    /^(\d{4})\/(\d{1,2})\/(\d{1,2})$/, // YYYY/MM/DD
+    /^(\d{4})\.(\d{1,2})\.(\d{1,2})$/, // YYYY.MM.DD
+    /^(\d{4})(\d{2})(\d{2})$/, // YYYYMMDD
+  ];
+  
+  for (const format of formats) {
+    const match = dateStr.match(format);
+    if (match) {
+      const year = parseInt(match[1], 10);
+      const month = parseInt(match[2], 10) - 1; // 月份从 0 开始
+      const day = parseInt(match[3], 10);
+      const date = new Date(year, month, day);
+      if (!isNaN(date.getTime())) {
+        return date.getTime();
+      }
+    }
+  }
+  
+  // 尝试直接解析
+  const date = new Date(dateStr);
+  if (!isNaN(date.getTime())) {
+    return date.getTime();
+  }
+  
+  return null;
+}
+
+// 提取时间信息
+function extractTimeInfo(content: string): TimeInfo[] {
+  const timeInfo: TimeInfo[] = [];
+  const lines = content.split('\n');
+  
+  for (const line of lines) {
+    // 匹配列表项格式：- **时间类型**：值
+    // 支持中文冒号和英文冒号，匹配整行直到行尾
+    const match = line.match(/-\s*\*\*([^*]+)\*\*[：:]\s*(.+)$/);
+    if (match) {
+      const fieldName = match[1].trim();
+      let fieldValue = match[2].trim();
+      
+      // 只提取包含"时间"的字段
+      if (fieldName.includes('时间')) {
+        // 如果包含"需要修改"，显示为"待填写"
+        if (fieldValue.includes('需要修改')) {
+          fieldValue = '待填写';
+        } else {
+          // 移除可能的括号内容（如 "(需要修改)"），但保留日期部分
+          fieldValue = fieldValue.replace(/\s*\([^)]*\)\s*$/, '').trim();
+        }
+        
+        if (fieldValue.length > 0) {
+          const timestamp = parseDate(fieldValue);
+          timeInfo.push({
+            label: fieldName,
+            value: fieldValue,
+            timestamp: timestamp,
+          });
+        }
+      }
+    }
+  }
+  
+  return timeInfo;
+}
+
+// 获取阶段的主要时间（用于排序）
+function getPrimaryTimestamp(stage: LifecycleStage): number | null {
+  const content = stage.content.trim();
+  const timeInfo = extractTimeInfo(content);
+  
+  if (timeInfo.length === 0) {
+    return null;
+  }
+  
+  // 优先使用最早的时间戳
+  const timestamps = timeInfo
+    .map(t => t.timestamp)
+    .filter((t): t is number => t !== null)
+    .sort((a, b) => a - b);
+  
+  return timestamps.length > 0 ? timestamps[0] : null;
+}
+
 // 提取内容摘要（精简信息）
 function extractSummary(content: string, maxLength: number = 100): string {
   if (!content.trim()) return '';
@@ -51,6 +153,84 @@ marked.setOptions({
   mangle: false,
 });
 
+// 格式化日期显示
+function formatDate(timestamp: number): string {
+  const date = new Date(timestamp);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+// 格式化日期时间显示（包含年月日）
+function formatDateTime(timestamp: number): string {
+  const date = new Date(timestamp);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const weekdays = ['日', '一', '二', '三', '四', '五', '六'];
+  const weekday = weekdays[date.getDay()];
+  return `${year}年${month}月${day}日 (周${weekday})`;
+}
+
+// 时间节点接口
+interface TimeNode {
+  timestamp: number | null;
+  dateLabel: string;
+  stages: Array<{
+    stage: LifecycleStage;
+    timeInfo: TimeInfo[];
+    primaryTimestamp: number | null;
+  }>;
+}
+
+// 按时间分组阶段
+function groupStagesByTime(stages: LifecycleStage[]): TimeNode[] {
+  const timeMap = new Map<number | string, TimeNode>();
+  
+  stages.forEach(stage => {
+    const primaryTimestamp = getPrimaryTimestamp(stage);
+    const timeInfo = extractTimeInfo(stage.content);
+    
+    // 使用时间戳作为key，如果没有时间戳则使用特殊key
+    const key = primaryTimestamp ?? `no-time-${stage.stageNum ?? 'unknown'}`;
+    
+    if (!timeMap.has(key)) {
+      let dateLabel: string;
+      if (primaryTimestamp !== null) {
+        dateLabel = formatDateTime(primaryTimestamp);
+      } else {
+        dateLabel = '未指定时间';
+      }
+      
+      timeMap.set(key, {
+        timestamp: primaryTimestamp,
+        dateLabel,
+        stages: [],
+      });
+    }
+    
+    timeMap.get(key)!.stages.push({
+      stage,
+      timeInfo,
+      primaryTimestamp,
+    });
+  });
+  
+  // 转换为数组并排序
+  const timeNodes: TimeNode[] = Array.from(timeMap.values());
+  
+  // 分离有时间和无时间的节点
+  const nodesWithTime = timeNodes.filter(n => n.timestamp !== null);
+  const nodesWithoutTime = timeNodes.filter(n => n.timestamp === null);
+  
+  // 按时间戳排序（从早到晚）
+  nodesWithTime.sort((a, b) => (a.timestamp as number) - (b.timestamp as number));
+  
+  // 合并：先显示有时间戳的，再显示无时间戳的
+  return [...nodesWithTime, ...nodesWithoutTime];
+}
+
 // 渲染生命周期视图
 export function renderLifecycleView(markdown: string, container: HTMLElement): void {
   if (!markdown.trim()) {
@@ -60,7 +240,7 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
   }
 
   const title = extractTitle(markdown);
-  const stages = parseLifecycleStages(markdown);
+  let stages = parseLifecycleStages(markdown);
 
   let html = '<div class="lifecycle-container">';
   html += `<h1 class="lifecycle-title">${escapeHtml(title)}</h1>`;
@@ -94,37 +274,106 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
     }
     html += '</div>';
   } else {
-    html += '<div class="lifecycle-stages">';
+    // 按时间分组阶段
+    const timeNodes = groupStagesByTime(stages);
+    
+    html += '<div class="timeline-wrapper">';
+    html += '<div class="timeline-container">';
+    
+    // 时间轴线条（作为背景）
+    html += '<div class="timeline-axis-line"></div>';
+    
+    // 时间线内容
+    html += '<div class="timeline-content-wrapper">';
 
-    stages.forEach((stage: LifecycleStage) => {
-      const stageNum = stage.stageNum ?? '?';
-      const content = stage.content.trim();
-      const summary = extractSummary(content);
-
-      html += `<div class="lifecycle-stage collapsed" data-stage="${stageNum}">`;
-      html += `<div class="stage-indicator"></div>`;
-      html += '<div class="stage-content">';
-      html += '<div class="stage-header">';
-      html += '<span class="stage-header-title">' + escapeHtml(stage.title) + '</span>';
-      html += '<span class="stage-toggle-icon">▼</span>';
+    timeNodes.forEach((timeNode, nodeIndex) => {
+      const hasTimestamp = timeNode.timestamp !== null;
+      const dateStr = hasTimestamp && timeNode.timestamp ? formatDate(timeNode.timestamp) : '';
+      
+      // 计算时间范围（如果有多个时间点）
+      const allTimestamps = timeNode.stages
+        .flatMap(s => s.timeInfo.map(t => t.timestamp))
+        .filter((t): t is number => t !== null)
+        .sort((a, b) => a - b);
+      
+      const minTimestamp = allTimestamps.length > 0 ? allTimestamps[0] : null;
+      const maxTimestamp = allTimestamps.length > 0 ? allTimestamps[allTimestamps.length - 1] : null;
+      const hasTimeRange = minTimestamp !== null && maxTimestamp !== null && minTimestamp !== maxTimestamp;
+      
+      // 时间节点组
+      html += `<div class="timeline-node-group" data-timestamp="${timeNode.timestamp ?? ''}" data-index="${nodeIndex}">`;
+      
+      // 时间轴标记（左侧）
+      html += '<div class="timeline-marker">';
+      if (hasTimestamp && timeNode.timestamp) {
+        html += `<div class="timeline-dot" data-timestamp="${timeNode.timestamp}"></div>`;
+        html += `<div class="timeline-date-label">${escapeHtml(dateStr)}</div>`;
+      } else {
+        html += `<div class="timeline-dot timeline-dot-unknown"></div>`;
+        html += `<div class="timeline-date-label timeline-date-unknown">未指定</div>`;
+      }
       html += '</div>';
       
-      if (summary) {
-        html += `<div class="stage-summary">${escapeHtml(summary)}</div>`;
-      }
+      // 内容区域（右侧）
+      html += '<div class="timeline-content-area">';
+      
+      // 该时间点的所有阶段
+      html += '<div class="timeline-stages-container">';
+      
+      timeNode.stages.forEach(({ stage, timeInfo, primaryTimestamp }, stageIndex) => {
+        const stageNum = stage.stageNum ?? '?';
+        const content = stage.content.trim();
+        const summary = extractSummary(content);
 
-      if (content) {
-        html += `<div class="stage-body">${marked.parse(content)}</div>`;
-      } else {
-        html +=
-          '<div class="stage-body"><p style="color: #999; font-style: italic;">暂无内容</p></div>';
-      }
+        html += `<div class="lifecycle-stage collapsed" data-stage="${stageNum}" data-node-index="${nodeIndex}" data-stage-index="${stageIndex}">`;
+        
+        html += '<div class="stage-card">';
+        
+        // 阶段头部
+        html += '<div class="stage-header">';
+        html += '<div class="stage-header-left">';
+        html += `<div class="stage-number-badge" data-stage="${stageNum}">${stageNum}</div>`;
+        html += `<span class="stage-header-title">${escapeHtml(stage.title)}</span>`;
+        html += '</div>';
+        html += '<span class="stage-toggle-icon">▼</span>';
+        html += '</div>';
+        
+        // 时间信息条
+        if (timeInfo.length > 0) {
+          html += '<div class="stage-time-bar">';
+          timeInfo.forEach(time => {
+            const timeLabel = time.timestamp !== null 
+              ? `<span class="time-label-name">${escapeHtml(time.label)}</span><span class="time-label-value">${escapeHtml(time.value)}</span>`
+              : `<span class="time-label-name">${escapeHtml(time.label)}</span><span class="time-label-value time-label-pending">${escapeHtml(time.value)}</span>`;
+            html += `<div class="time-item">${timeLabel}</div>`;
+          });
+          html += '</div>';
+        }
+        
+        // 摘要（仅在折叠时显示）
+        if (summary) {
+          html += `<div class="stage-summary">${escapeHtml(summary)}</div>`;
+        }
 
-      html += '</div>';
-      html += '</div>';
+        // 阶段内容
+        if (content) {
+          html += `<div class="stage-body">${marked.parse(content)}</div>`;
+        } else {
+          html += '<div class="stage-body"><p class="stage-empty">暂无内容</p></div>';
+        }
+
+        html += '</div>'; // stage-card
+        html += '</div>'; // lifecycle-stage
+      });
+      
+      html += '</div>'; // timeline-stages-container
+      html += '</div>'; // timeline-content-area
+      html += '</div>'; // timeline-node-group
     });
 
-    html += '</div>';
+    html += '</div>'; // timeline-content-wrapper
+    html += '</div>'; // timeline-container
+    html += '</div>'; // timeline-wrapper
   }
 
   html += '</div>';
