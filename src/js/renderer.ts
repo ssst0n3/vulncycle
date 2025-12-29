@@ -220,15 +220,28 @@ function groupStagesByTime(stages: LifecycleStage[]): TimeNode[] {
   // 转换为数组并排序
   const timeNodes: TimeNode[] = Array.from(timeMap.values());
   
-  // 分离有时间和无时间的节点
-  const nodesWithTime = timeNodes.filter(n => n.timestamp !== null);
-  const nodesWithoutTime = timeNodes.filter(n => n.timestamp === null);
+  // 分离"基本信息"阶段和其他阶段
+  const basicInfoNodes: TimeNode[] = [];
+  const otherNodes: TimeNode[] = [];
+  
+  timeNodes.forEach(node => {
+    const hasBasicInfo = node.stages.some(s => s.stage.stageNum === 1);
+    if (hasBasicInfo) {
+      basicInfoNodes.push(node);
+    } else {
+      otherNodes.push(node);
+    }
+  });
+  
+  // 分离有时间和无时间的其他节点
+  const otherNodesWithTime = otherNodes.filter(n => n.timestamp !== null);
+  const otherNodesWithoutTime = otherNodes.filter(n => n.timestamp === null);
   
   // 按时间戳排序（从早到晚）
-  nodesWithTime.sort((a, b) => (a.timestamp as number) - (b.timestamp as number));
+  otherNodesWithTime.sort((a, b) => (a.timestamp as number) - (b.timestamp as number));
   
-  // 合并：先显示有时间戳的，再显示无时间戳的
-  return [...nodesWithTime, ...nodesWithoutTime];
+  // 合并：先显示"基本信息"，再显示其他有时间戳的，最后显示无时间戳的
+  return [...basicInfoNodes, ...otherNodesWithTime, ...otherNodesWithoutTime];
 }
 
 // 渲染生命周期视图
