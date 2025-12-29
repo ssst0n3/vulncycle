@@ -303,6 +303,9 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
       const hasTimestamp = timeNode.timestamp !== null;
       const dateStr = hasTimestamp && timeNode.timestamp ? formatDate(timeNode.timestamp) : '';
       
+      // 检查是否只包含基本信息（stageNum === 1）
+      const isBasicInfoOnly = timeNode.stages.every(s => s.stage.stageNum === 1);
+      
       // 计算时间范围（如果有多个时间点）
       const allTimestamps = timeNode.stages
         .flatMap(s => s.timeInfo.map(t => t.timestamp))
@@ -321,10 +324,12 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
       if (hasTimestamp && timeNode.timestamp) {
         html += `<div class="timeline-dot" data-timestamp="${timeNode.timestamp}"></div>`;
         html += `<div class="timeline-date-label">${escapeHtml(dateStr)}</div>`;
-      } else {
+      } else if (!isBasicInfoOnly) {
+        // 只有非基本信息节点才显示"未指定"
         html += `<div class="timeline-dot timeline-dot-unknown"></div>`;
         html += `<div class="timeline-date-label timeline-date-unknown">未指定</div>`;
       }
+      // 基本信息节点如果没有时间戳，不显示任何标记
       html += '</div>';
       
       // 内容区域（右侧）
