@@ -153,12 +153,13 @@ marked.setOptions({
   mangle: false,
 });
 
-// 格式化日期显示
+// 格式化日期显示（竖向显示，单行格式）
 function formatDate(timestamp: number): string {
   const date = new Date(timestamp);
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
+  // 竖向显示时，单行格式会自动竖着排列
   return `${year}-${month}-${day}`;
 }
 
@@ -323,7 +324,7 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
       html += '<div class="timeline-marker">';
       if (hasTimestamp && timeNode.timestamp) {
         html += `<div class="timeline-dot" data-timestamp="${timeNode.timestamp}"></div>`;
-        html += `<div class="timeline-date-label">${escapeHtml(dateStr)}</div>`;
+        html += `<div class="timeline-date-label">${dateStr}</div>`;
       } else if (!isBasicInfoOnly) {
         // 只有非基本信息节点才显示"未指定"
         html += `<div class="timeline-dot timeline-dot-unknown"></div>`;
