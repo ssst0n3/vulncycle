@@ -161,6 +161,82 @@ header h1 {
   flex-shrink: 0;
 }
 
+.panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* 保存状态指示器 */
+.save-status {
+  font-size: 0.85em;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.15);
+  transition: background var(--transition-fast), color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.save-status.saved {
+  background: rgba(67, 233, 123, 0.3);
+  color: var(--text-white);
+}
+
+.save-status.unsaved {
+  background: rgba(255, 154, 158, 0.3);
+  color: var(--text-white);
+}
+
+.save-status.saving {
+  background: rgba(79, 172, 254, 0.3);
+  color: var(--text-white);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* 保存按钮 */
+.save-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: var(--text-white);
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+  backdrop-filter: blur(10px);
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+.save-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.save-btn:active {
+  transform: scale(0.95);
+}
+
+.save-icon {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+}
+
 .fullscreen-btn {
   background: rgba(255, 255, 255, 0.2);
   border: none;
@@ -1064,4 +1140,53 @@ header h1 {
 
 .preview-content::-webkit-scrollbar-thumb:hover {
   background: var(--color-primary-dark);
+}
+
+/* 保存通知样式 */
+.save-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: var(--gradient-primary);
+  color: var(--text-white);
+  padding: 12px 20px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 10000;
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: opacity var(--transition-normal), transform var(--transition-normal);
+  font-weight: 500;
+  backdrop-filter: blur(10px);
+}
+
+.save-notification.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 响应式：保存按钮和状态指示器 */
+@media (max-width: 768px) {
+  .panel-header-actions {
+    gap: var(--spacing-xs);
+  }
+
+  .save-status {
+    font-size: 0.75em;
+    padding: 3px 6px;
+  }
+
+  .save-btn {
+    padding: 5px 8px;
+    font-size: 0.85em;
+  }
+
+  .save-btn span {
+    display: none; /* 在小屏幕上隐藏文字，只显示图标 */
+  }
+
+  .save-icon {
+    width: 18px;
+    height: 18px;
+  }
 }
