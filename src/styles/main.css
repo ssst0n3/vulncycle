@@ -453,10 +453,25 @@ header h1 {
   min-width: 0;
   max-width: 100%;
   box-sizing: border-box;
+  font-size: 0.95em;
+  line-height: 1.6;
 }
 
 .preview-content > *:first-child {
   margin-top: 0;
+}
+
+.preview-content h5 {
+  font-size: 1.05em;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-top: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+}
+
+.preview-content p {
+  font-size: 0.95em;
+  margin-bottom: var(--spacing-xs);
 }
 
 /* 生命周期样式 */
@@ -1019,7 +1034,8 @@ header h1 {
 .stage-body h1,
 .stage-body h2,
 .stage-body h3,
-.stage-body h4 {
+.stage-body h4,
+.stage-body h5 {
   color: var(--text-primary);
   margin-top: var(--spacing-xs);
   margin-bottom: 6px;
@@ -1040,8 +1056,18 @@ header h1 {
   font-size: 1.05em;
 }
 
+.stage-body h4 {
+  font-size: 0.95em;
+}
+
+.stage-body h5 {
+  font-size: 0.92em;
+  font-weight: 600;
+}
+
 .stage-body p {
   margin-bottom: 8px;
+  font-size: 0.9em;
 }
 
 .stage-body ul,
@@ -1857,6 +1883,11 @@ header h1 {
   margin-top: var(--spacing-sm);
   margin-bottom: var(--spacing-xs);
   font-weight: 600;
+  font-size: 1.05em;
+}
+
+.analysis-section-content p {
+  font-size: 0.95em;
 }
 
 .analysis-section-content p {
