@@ -524,3 +524,53 @@ export function renderExploitabilityView(markdown: string, container: HTMLElemen
   container.innerHTML = html;
 }
 
+// 提取漏洞情报阶段（第7节）的内容
+function extractIntelligenceContent(markdown: string): {
+  title: string;
+  content: string;
+} {
+  const stages = parseLifecycleStages(markdown);
+  const intelligenceStage = stages.find(stage => stage.stageNum === 7);
+  
+  if (!intelligenceStage) {
+    return {
+      title: '漏洞情报',
+      content: '',
+    };
+  }
+
+  return {
+    title: intelligenceStage.title,
+    content: intelligenceStage.content.trim(),
+  };
+}
+
+// 渲染情报视图
+export function renderIntelligenceView(markdown: string, container: HTMLElement): void {
+  if (!markdown.trim()) {
+    container.innerHTML =
+      '<div class="intelligence-container"><p style="text-align: center; color: #999; padding: 40px;">请在左侧输入 Markdown 内容...</p></div>';
+    return;
+  }
+
+  const docTitle = extractTitle(markdown);
+  const { title, content } = extractIntelligenceContent(markdown);
+
+  let html = '<div class="intelligence-container">';
+  html += `<h1 class="intelligence-title">${escapeHtml(docTitle)}</h1>`;
+  html += `<h2 class="intelligence-main-title">${escapeHtml(title)}</h2>`;
+
+  if (!content) {
+    html += '<div class="intelligence-empty">';
+    html += '<p style="text-align: center; color: #999; padding: 40px;">未找到漏洞情报相关内容，请确保文档包含第7节"漏洞情报"的内容。</p>';
+    html += '</div>';
+  } else {
+    html += '<div class="intelligence-content">';
+    html += `${marked.parse(content)}`;
+    html += '</div>';
+  }
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+

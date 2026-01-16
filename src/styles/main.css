@@ -1627,3 +1627,99 @@ header h1 {
   text-align: center;
   padding: var(--spacing-md);
 }
+
+/* 情报视图样式 */
+.intelligence-container {
+  max-width: 100%;
+  margin: 0 auto;
+  padding: var(--spacing-md);
+}
+
+.intelligence-title {
+  font-size: 2em;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 3px solid var(--color-primary);
+}
+
+.intelligence-main-title {
+  font-size: 1.5em;
+  font-weight: 600;
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-lg);
+  padding-left: var(--spacing-sm);
+  border-left: 4px solid var(--color-primary);
+}
+
+.intelligence-empty {
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: var(--text-muted);
+}
+
+.intelligence-content {
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--spacing-lg);
+  color: var(--text-primary);
+  line-height: 1.8;
+  transition: box-shadow var(--transition-normal);
+}
+
+.intelligence-content:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.intelligence-content h3,
+.intelligence-content h4 {
+  color: var(--color-primary);
+  margin-top: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  font-weight: 600;
+}
+
+.intelligence-content h3:first-child,
+.intelligence-content h4:first-child {
+  margin-top: 0;
+}
+
+.intelligence-content p {
+  margin-bottom: var(--spacing-sm);
+}
+
+.intelligence-content ul,
+.intelligence-content ol {
+  margin-left: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+}
+
+.intelligence-content li {
+  margin-bottom: var(--spacing-xs);
+}
+
+.intelligence-content code {
+  background: var(--bg-code);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-family-mono);
+  font-size: 0.9em;
+  color: var(--color-primary);
+}
+
+.intelligence-content pre {
+  background: var(--bg-code-block);
+  color: var(--text-light);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  margin: var(--spacing-sm) 0;
+}
+
+.intelligence-content pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
