@@ -1,11 +1,11 @@
 import '../styles/main.css';
 import { initEditor } from './editor.js';
-import { renderLifecycleView, renderExploitabilityView, renderIntelligenceView } from './renderer.js';
+import { renderLifecycleView, renderExploitabilityView, renderIntelligenceView, renderAnalysisView } from './renderer.js';
 import { storageManager, type SaveStatus } from './storage.js';
 import type { EditorView } from '@codemirror/view';
 
 // 视图类型
-type ViewType = 'lifecycle' | 'exploitability' | 'intelligence';
+type ViewType = 'lifecycle' | 'exploitability' | 'intelligence' | 'analysis';
 
 // 当前视图类型
 let currentView: ViewType = 'lifecycle';
@@ -17,8 +17,10 @@ function renderCurrentView(markdown: string, container: HTMLElement): void {
     initStageToggle(); // 初始化折叠/展开功能
   } else if (currentView === 'exploitability') {
     renderExploitabilityView(markdown, container);
-  } else {
+  } else if (currentView === 'intelligence') {
     renderIntelligenceView(markdown, container);
+  } else {
+    renderAnalysisView(markdown, container);
   }
 }
 
@@ -72,8 +74,9 @@ function initViewSwitcher(editor: EditorView, previewContent: HTMLElement): void
   const lifecycleBtn = document.getElementById('lifecycle-view-btn');
   const exploitabilityBtn = document.getElementById('exploitability-view-btn');
   const intelligenceBtn = document.getElementById('intelligence-view-btn');
+  const analysisBtn = document.getElementById('analysis-view-btn');
 
-  if (!lifecycleBtn || !exploitabilityBtn || !intelligenceBtn) {
+  if (!lifecycleBtn || !exploitabilityBtn || !intelligenceBtn || !analysisBtn) {
     console.error('View switcher buttons not found');
     return;
   }
@@ -85,6 +88,7 @@ function initViewSwitcher(editor: EditorView, previewContent: HTMLElement): void
     lifecycleBtn.classList.toggle('active', viewType === 'lifecycle');
     exploitabilityBtn.classList.toggle('active', viewType === 'exploitability');
     intelligenceBtn.classList.toggle('active', viewType === 'intelligence');
+    analysisBtn.classList.toggle('active', viewType === 'analysis');
 
     // 重新渲染当前视图
     const markdown = editor.state.doc.toString();
@@ -94,6 +98,7 @@ function initViewSwitcher(editor: EditorView, previewContent: HTMLElement): void
   lifecycleBtn.addEventListener('click', () => switchView('lifecycle'));
   exploitabilityBtn.addEventListener('click', () => switchView('exploitability'));
   intelligenceBtn.addEventListener('click', () => switchView('intelligence'));
+  analysisBtn.addEventListener('click', () => switchView('analysis'));
 }
 
 // 加载模板

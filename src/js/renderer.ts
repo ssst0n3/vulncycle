@@ -574,3 +574,71 @@ export function renderIntelligenceView(markdown: string, container: HTMLElement)
   container.innerHTML = html;
 }
 
+// 提取漏洞原理相关阶段的内容（第2、3、5节）
+function extractAnalysisContent(markdown: string): Array<{
+  stageNum: number;
+  title: string;
+  content: string;
+}> {
+  const stages = parseLifecycleStages(markdown);
+  const analysisStages = stages.filter(stage => 
+    stage.stageNum === 2 || // 漏洞引入
+    stage.stageNum === 3 || // 漏洞发现
+    stage.stageNum === 5    // 漏洞修复
+  );
+
+  return analysisStages.map(stage => ({
+    stageNum: stage.stageNum ?? 0,
+    title: stage.title,
+    content: stage.content.trim(),
+  }));
+}
+
+// 渲染漏洞原理视图
+export function renderAnalysisView(markdown: string, container: HTMLElement): void {
+  if (!markdown.trim()) {
+    container.innerHTML =
+      '<div class="analysis-container"><p style="text-align: center; color: #999; padding: 40px;">请在左侧输入 Markdown 内容...</p></div>';
+    return;
+  }
+
+  const docTitle = extractTitle(markdown);
+  const analysisStages = extractAnalysisContent(markdown);
+
+  let html = '<div class="analysis-container">';
+  html += `<h1 class="analysis-title">${escapeHtml(docTitle)}</h1>`;
+
+  if (analysisStages.length === 0) {
+    html += '<div class="analysis-empty">';
+    html += '<p style="text-align: center; color: #999; padding: 40px;">未找到漏洞原理相关内容，请确保文档包含第2节"漏洞引入"、第3节"漏洞发现"或第5节"漏洞修复"的内容。</p>';
+    html += '</div>';
+  } else {
+    html += '<div class="analysis-sections">';
+
+    analysisStages.forEach((stage, index) => {
+      const sectionId = `analysis-section-${index}`;
+      const stageGradient = `var(--gradient-stage-${stage.stageNum})`;
+      const stageBorderColor = `var(--border-color-stage-${stage.stageNum})`;
+      
+      html += `<div class="analysis-section" id="${sectionId}" data-stage="${stage.stageNum}">`;
+      html += `<div class="analysis-section-header" style="background: ${stageGradient}; border-bottom-color: ${stageBorderColor};">`;
+      html += `<div class="analysis-section-number" data-stage="${stage.stageNum}">${stage.stageNum}</div>`;
+      html += `<h3 class="analysis-section-title">${escapeHtml(stage.title)}</h3>`;
+      html += '</div>';
+
+      if (stage.content) {
+        html += `<div class="analysis-section-content">${marked.parse(stage.content)}</div>`;
+      } else {
+        html += '<div class="analysis-section-content"><p class="section-empty">暂无内容</p></div>';
+      }
+
+      html += '</div>';
+    });
+
+    html += '</div>';
+  }
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+
