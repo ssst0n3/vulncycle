@@ -398,7 +398,7 @@ header h1 {
 
 .preview-content {
   flex: 1;
-  padding: 0 var(--spacing-sm) var(--spacing-sm) var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-sm) var(--spacing-sm) var(--spacing-sm);
   overflow-y: auto;
   background: var(--bg-primary);
 }
