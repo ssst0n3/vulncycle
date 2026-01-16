@@ -170,44 +170,94 @@ header h1 {
 .panel-header {
   background: var(--gradient-primary);
   color: var(--text-white);
-  padding: 8px var(--spacing-md);
+  padding: 10px var(--spacing-md);
   font-weight: 600;
   font-size: 0.95em;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
+  position: relative;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2),
+              0 1px 3px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  transition: box-shadow var(--transition-normal);
+  height: 48px;
+  box-sizing: border-box;
+}
+
+.panel-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(255, 255, 255, 0.3) 50%, 
+    transparent 100%);
+}
+
+.panel-header h2 {
+  margin: 0;
+  font-size: 1em;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .panel-header-actions {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-xs);
+  position: relative;
+  z-index: 1;
 }
 
 /* 保存状态指示器 */
 .save-status {
   font-size: 0.85em;
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.15);
-  transition: background var(--transition-fast), color var(--transition-fast);
+  backdrop-filter: blur(8px);
+  transition: all var(--transition-fast);
   white-space: nowrap;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  line-height: 1.4;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
 }
 
 .save-status.saved {
-  background: rgba(67, 233, 123, 0.3);
+  background: rgba(67, 233, 123, 0.25);
+  border-color: rgba(67, 233, 123, 0.4);
   color: var(--text-white);
+  box-shadow: 0 1px 4px rgba(67, 233, 123, 0.2);
 }
 
 .save-status.unsaved {
-  background: rgba(255, 154, 158, 0.3);
+  background: rgba(255, 154, 158, 0.25);
+  border-color: rgba(255, 154, 158, 0.4);
   color: var(--text-white);
+  box-shadow: 0 1px 4px rgba(255, 154, 158, 0.2);
 }
 
 .save-status.saving {
-  background: rgba(79, 172, 254, 0.3);
+  background: rgba(79, 172, 254, 0.25);
+  border-color: rgba(79, 172, 254, 0.4);
   color: var(--text-white);
+  box-shadow: 0 1px 4px rgba(79, 172, 254, 0.2);
   animation: pulse 1.5s ease-in-out infinite;
 }
 
@@ -223,28 +273,36 @@ header h1 {
 /* 保存按钮 */
 .save-btn {
   background: rgba(255, 255, 255, 0.2);
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.3);
   color: var(--text-white);
   cursor: pointer;
-  padding: 6px 12px;
+  padding: 4px 12px;
   border-radius: var(--radius-md);
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  transition: background var(--transition-fast), transform var(--transition-fast);
+  transition: all var(--transition-fast);
   backdrop-filter: blur(10px);
   font-size: 0.9em;
   font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  letter-spacing: 0.2px;
+  line-height: 1.4;
+  height: 28px;
+  box-sizing: border-box;
 }
 
 .save-btn:hover {
   background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.05);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .save-btn:active {
-  transform: scale(0.95);
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .save-icon {
@@ -257,26 +315,33 @@ header h1 {
 
 .fullscreen-btn {
   background: rgba(255, 255, 255, 0.2);
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.3);
   color: var(--text-white);
   cursor: pointer;
-  padding: 6px 10px;
+  padding: 0;
   border-radius: var(--radius-md);
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background var(--transition-fast), transform var(--transition-fast);
+  transition: all var(--transition-fast);
   backdrop-filter: blur(10px);
   position: relative;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  width: 28px;
+  height: 28px;
+  box-sizing: border-box;
 }
 
 .fullscreen-btn:hover {
   background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.05);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .fullscreen-btn:active {
-  transform: scale(0.95);
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .fullscreen-icon {
@@ -1271,18 +1336,29 @@ header h1 {
 
 /* 响应式：保存按钮和状态指示器 */
 @media (max-width: 768px) {
+  .panel-header {
+    padding: 8px var(--spacing-sm);
+    height: 44px;
+  }
+
+  .panel-header h2 {
+    font-size: 0.9em;
+  }
+
   .panel-header-actions {
     gap: var(--spacing-xs);
   }
 
   .save-status {
     font-size: 0.75em;
-    padding: 3px 6px;
+    padding: 3px 8px;
+    height: 26px;
   }
 
   .save-btn {
-    padding: 5px 8px;
+    padding: 3px 8px;
     font-size: 0.85em;
+    height: 26px;
   }
 
   .save-btn span {
@@ -1292,5 +1368,11 @@ header h1 {
   .save-icon {
     width: 18px;
     height: 18px;
+  }
+
+  .fullscreen-btn {
+    width: 26px;
+    height: 26px;
+    padding: 0;
   }
 }
