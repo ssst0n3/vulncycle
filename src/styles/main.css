@@ -1292,6 +1292,10 @@ header h1 {
   transition: max-height var(--transition-normal), opacity var(--transition-normal), margin-top var(--transition-normal), padding-top var(--transition-normal);
 }
 
+.stage-subsection-body > :first-child {
+  margin-top: 0;
+}
+
 .stage-subsection.collapsed > .stage-subsection-body {
   max-height: 0;
   opacity: 0;
@@ -1304,7 +1308,7 @@ header h1 {
   max-height: 8000px;
   opacity: 1;
   margin-top: var(--spacing-xs);
-  padding-top: var(--spacing-xs);
+  padding-top: 0;
 }
 
 .lifecycle-stage.collapsed .stage-summary {
