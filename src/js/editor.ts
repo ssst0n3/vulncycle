@@ -2,7 +2,7 @@ import { EditorView, lineNumbers } from '@codemirror/view';
 import { EditorState, Extension } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
 import { oneDark } from '@codemirror/theme-one-dark';
-import { defaultKeymap } from '@codemirror/commands';
+import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { keymap } from '@codemirror/view';
 
 // 编辑器配置选项
@@ -29,7 +29,8 @@ export function initEditor(
 
   const extensions: Extension[] = [
     markdown(),
-    keymap.of(defaultKeymap),
+    history(),
+    keymap.of([...historyKeymap, ...defaultKeymap]),
     EditorView.theme({
       '&': {
         height: '100%',
