@@ -1330,7 +1330,8 @@ header h1 {
 .stage-body h2,
 .stage-body h3,
 .stage-body h4,
-.stage-body h5 {
+.stage-body h5,
+.stage-body h6 {
   color: var(--text-primary);
   margin-top: var(--spacing-xs);
   margin-bottom: 6px;
@@ -1356,7 +1357,12 @@ header h1 {
 }
 
 .stage-body h5 {
-  font-size: 0.92em;
+  font-size: 0.95em;
+  font-weight: 600;
+}
+
+.stage-body h6 {
+  font-size: 0.95em;
   font-weight: 600;
 }
 
@@ -1466,11 +1472,6 @@ header h1 {
   padding: 0;
   display: block;
   overflow-x: auto;
-}
-
-/* 确保即使只有 language- 类也能应用样式 */
-.stage-body pre code[class*="language-"]:not(.hljs) {
-  /* 如果没有 hljs 类，通过 JavaScript 动态添加，或通过 CSS 强制应用样式 */
 }
 
 /* Highlight.js 语法高亮颜色主题 - 深色主题优化 */
