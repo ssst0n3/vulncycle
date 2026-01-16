@@ -6,6 +6,8 @@
 // 存储键名
 const STORAGE_KEY = 'vulncycleinsight_content';
 const STORAGE_TIMESTAMP_KEY = 'vulncycleinsight_timestamp';
+const STORAGE_HISTORY_KEY = 'vulncycleinsight_history';
+const MAX_HISTORY_ENTRIES = 20;
 
 // 自动保存间隔（毫秒）
 const AUTO_SAVE_INTERVAL = 2000; // 2秒
@@ -14,6 +16,12 @@ export interface SaveStatus {
   isSaving: boolean;
   lastSaved: Date | null;
   hasUnsavedChanges: boolean;
+}
+
+export interface HistoryEntry {
+  id: string;
+  timestamp: string;
+  content: string;
 }
 
 export class StorageManager {
@@ -29,6 +37,7 @@ export class StorageManager {
       localStorage.setItem(STORAGE_KEY, content);
       localStorage.setItem(STORAGE_TIMESTAMP_KEY, new Date().toISOString());
       this.lastContent = content;
+      this.addHistoryEntry(content);
     } catch (error) {
       console.error('保存到 LocalStorage 失败:', error);
       // 如果存储空间不足，尝试清理旧数据
@@ -38,6 +47,7 @@ export class StorageManager {
           localStorage.setItem(STORAGE_KEY, content);
           localStorage.setItem(STORAGE_TIMESTAMP_KEY, new Date().toISOString());
           this.lastContent = content;
+          this.addHistoryEntry(content);
         } catch (retryError) {
           console.error('重试保存失败:', retryError);
         }
@@ -77,6 +87,7 @@ export class StorageManager {
     try {
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(STORAGE_TIMESTAMP_KEY);
+      localStorage.removeItem(STORAGE_HISTORY_KEY);
       this.lastContent = '';
     } catch (error) {
       console.error('清除存储失败:', error);
@@ -197,6 +208,88 @@ export class StorageManager {
       lastSaved: this.getLastSavedTime(),
       hasUnsavedChanges: this.hasUnsavedChanges(currentContent),
     };
+  }
+
+  /**
+   * 获取历史版本列表（最新在前）
+   */
+  getHistoryEntries(): HistoryEntry[] {
+    return this.readHistoryEntries();
+  }
+
+  /**
+   * 根据 ID 获取历史版本
+   */
+  getHistoryEntry(id: string): HistoryEntry | null {
+    const entries = this.readHistoryEntries();
+    return entries.find((entry) => entry.id === id) ?? null;
+  }
+
+  /**
+   * 初始化历史版本（仅在为空时写入）
+   */
+  seedHistory(content: string): void {
+    if (!content) return;
+    const entries = this.readHistoryEntries();
+    if (entries.length === 0) {
+      this.addHistoryEntry(content);
+    }
+  }
+
+  private readHistoryEntries(): HistoryEntry[] {
+    try {
+      const raw = localStorage.getItem(STORAGE_HISTORY_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter((entry) => this.isValidHistoryEntry(entry));
+    } catch (error) {
+      console.error('读取历史版本失败:', error);
+      return [];
+    }
+  }
+
+  private isValidHistoryEntry(entry: unknown): entry is HistoryEntry {
+    if (!entry || typeof entry !== 'object') return false;
+    const record = entry as HistoryEntry;
+    return (
+      typeof record.id === 'string' &&
+      typeof record.timestamp === 'string' &&
+      typeof record.content === 'string'
+    );
+  }
+
+  private addHistoryEntry(content: string): void {
+    try {
+      const entries = this.readHistoryEntries();
+      if (entries[0]?.content === content) return;
+      const entry: HistoryEntry = {
+        id: `${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
+        timestamp: new Date().toISOString(),
+        content,
+      };
+      const nextEntries = [entry, ...entries].slice(0, MAX_HISTORY_ENTRIES);
+      this.writeHistoryEntries(nextEntries);
+    } catch (error) {
+      console.error('保存历史版本失败:', error);
+    }
+  }
+
+  private writeHistoryEntries(entries: HistoryEntry[]): void {
+    try {
+      localStorage.setItem(STORAGE_HISTORY_KEY, JSON.stringify(entries));
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+        const trimmedEntries = entries.slice(0, Math.max(1, Math.floor(MAX_HISTORY_ENTRIES / 2)));
+        try {
+          localStorage.setItem(STORAGE_HISTORY_KEY, JSON.stringify(trimmedEntries));
+        } catch (retryError) {
+          console.error('保存历史版本失败:', retryError);
+        }
+        return;
+      }
+      throw error;
+    }
   }
 }
 

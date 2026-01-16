@@ -19,13 +19,24 @@
                     <h2>Markdown 编辑器</h2>
                     <div class="panel-header-actions">
                         <span id="save-status" class="save-status">未保存</span>
-                        <button id="save-btn" class="save-btn" title="保存并下载文件">
+                        <button id="history-btn" class="history-btn" title="历史版本">
+                            <span>历史版本</span>
+                        </button>
+                        <button id="save-btn" class="save-btn" title="保存到浏览器">
                             <svg class="save-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
                                 <polyline points="17 21 17 13 7 13 7 21"></polyline>
                                 <polyline points="7 3 7 8 15 8"></polyline>
                             </svg>
                             <span>保存</span>
+                        </button>
+                        <button id="download-btn" class="download-btn" title="下载文件">
+                            <svg class="save-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            <span>下载</span>
                         </button>
                         <button id="fullscreen-btn" class="fullscreen-btn" title="全屏/退出全屏">
                             <svg class="fullscreen-icon fullscreen-enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -59,6 +70,31 @@
                     </div>
                 </div>
                 <div id="preview-content" class="preview-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 历史版本弹窗 -->
+    <div id="history-modal" class="history-modal hidden" aria-hidden="true">
+        <div class="history-modal-overlay" data-history-close></div>
+        <div class="history-modal-content" role="dialog" aria-modal="true" aria-labelledby="history-modal-title">
+            <div class="history-modal-header">
+                <h3 id="history-modal-title">历史版本</h3>
+                <button class="history-close-btn" data-history-close title="关闭">✕</button>
+            </div>
+            <div class="history-modal-body">
+                <div class="history-list">
+                    <div class="history-list-title">版本列表</div>
+                    <div id="history-list-items" class="history-list-items"></div>
+                </div>
+                <div class="history-diff">
+                    <div class="history-diff-title">与当前内容的差异</div>
+                    <pre id="history-diff-content" class="history-diff-content"></pre>
+                </div>
+            </div>
+            <div class="history-modal-footer">
+                <button id="history-restore-btn" class="history-restore-btn" disabled>恢复此版本</button>
+                <button class="history-cancel-btn" data-history-close>取消</button>
             </div>
         </div>
     </div>

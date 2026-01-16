@@ -8,7 +8,7 @@ import {
   renderAnalysisView,
   updateLifecycleView,
 } from './renderer.js';
-import { storageManager, type SaveStatus } from './storage.js';
+import { storageManager, type HistoryEntry, type SaveStatus } from './storage.js';
 import type { EditorView } from '@codemirror/view';
 
 // 视图类型
@@ -127,6 +127,9 @@ function initApp(): void {
   // 初始化保存功能
   initSaveFeature(editor);
 
+  // 初始化历史版本功能
+  initHistoryModal(editor, previewContent);
+
   // 加载模板内容（或已保存的内容）
   loadTemplate(editor, previewContent);
 
@@ -181,6 +184,7 @@ async function loadTemplate(
     });
     renderCurrentView(savedContent, previewContent);
     updateSaveStatus(savedContent);
+    storageManager.seedHistory(savedContent);
     return;
   }
 
@@ -198,6 +202,7 @@ async function loadTemplate(
     // 保存模板内容
     storageManager.saveToLocalStorage(text);
     updateSaveStatus(text);
+    storageManager.seedHistory(text);
   } catch (err) {
     console.log('无法加载模板文件，使用空编辑器');
     renderCurrentView('', previewContent);
@@ -228,6 +233,7 @@ function initStageToggle(previewContent: HTMLElement): void {
 // 初始化保存功能
 function initSaveFeature(editor: EditorView): void {
   const saveBtn = document.getElementById('save-btn');
+  const downloadBtn = document.getElementById('download-btn');
 
   // 启动自动保存
   storageManager.startAutoSave(
@@ -242,13 +248,19 @@ function initSaveFeature(editor: EditorView): void {
     saveBtn.addEventListener('click', () => {
       const content = editor.state.doc.toString();
       storageManager.manualSave(content);
-      
-      // 同时下载文件
+
+      // 显示保存成功提示
+      showSaveNotification('已保存');
+    });
+  }
+
+  // 下载按钮
+  if (downloadBtn) {
+    downloadBtn.addEventListener('click', () => {
+      const content = editor.state.doc.toString();
       const filename = generateFilename();
       storageManager.downloadAsFile(content, filename);
-      
-      // 显示保存成功提示
-      showSaveNotification('已保存并下载文件');
+      showSaveNotification('已下载文件');
     });
   }
 
@@ -258,6 +270,103 @@ function initSaveFeature(editor: EditorView): void {
     const status = storageManager.getSaveStatus(content);
     updateSaveStatusUI(status);
   }, 1000);
+}
+
+// 初始化历史版本弹窗功能
+function initHistoryModal(editor: EditorView, previewContent: HTMLElement): void {
+  const historyBtn = document.getElementById('history-btn') as HTMLButtonElement | null;
+  const modal = document.getElementById('history-modal') as HTMLElement | null;
+  const listContainer = document.getElementById('history-list-items') as HTMLElement | null;
+  const diffContent = document.getElementById('history-diff-content') as HTMLElement | null;
+  const restoreBtn = document.getElementById('history-restore-btn') as HTMLButtonElement | null;
+  const closeTargets = Array.from(
+    document.querySelectorAll('[data-history-close]')
+  ) as HTMLElement[];
+
+  if (!historyBtn || !modal || !listContainer || !diffContent || !restoreBtn) {
+    console.error('History modal elements not found');
+    return;
+  }
+
+  let currentContentSnapshot = '';
+  let selectedEntry: HistoryEntry | null = null;
+
+  const openModal = () => {
+    currentContentSnapshot = editor.state.doc.toString();
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+    refreshHistoryList();
+  };
+
+  const closeModal = () => {
+    modal.classList.add('hidden');
+    modal.setAttribute('aria-hidden', 'true');
+    selectedEntry = null;
+    restoreBtn.disabled = true;
+  };
+
+  const refreshHistoryList = () => {
+    const entries = storageManager.getHistoryEntries();
+    listContainer.innerHTML = '';
+    if (!entries.length) {
+      const empty = document.createElement('div');
+      empty.className = 'history-empty';
+      empty.textContent = '暂无历史版本';
+      listContainer.appendChild(empty);
+      diffContent.textContent = '';
+      restoreBtn.disabled = true;
+      return;
+    }
+
+    entries.forEach((entry) => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'history-item';
+      item.dataset.historyId = entry.id;
+      item.innerHTML = `
+        <div class="history-item-time">${formatHistoryTime(new Date(entry.timestamp))}</div>
+        <div class="history-item-preview">${escapeHtml(getHistoryPreview(entry.content))}</div>
+      `;
+      item.addEventListener('click', () => {
+        selectEntry(entry);
+        highlightSelected(entry.id);
+      });
+      listContainer.appendChild(item);
+    });
+
+    selectEntry(entries[0]);
+    highlightSelected(entries[0].id);
+  };
+
+  const highlightSelected = (id: string) => {
+    const items = listContainer.querySelectorAll('.history-item');
+    items.forEach((item) => {
+      const match = (item as HTMLElement).dataset.historyId === id;
+      item.classList.toggle('active', match);
+    });
+  };
+
+  const selectEntry = (entry: HistoryEntry) => {
+    selectedEntry = entry;
+    restoreBtn.disabled = false;
+    const diffLines = buildUnifiedDiff(currentContentSnapshot, entry.content);
+    diffContent.innerHTML = diffLines.map(renderDiffLine).join('\n');
+  };
+
+  historyBtn.addEventListener('click', openModal);
+  closeTargets.forEach((node) => node.addEventListener('click', closeModal));
+
+  restoreBtn.addEventListener('click', () => {
+    if (!selectedEntry) return;
+    editor.dispatch({
+      changes: { from: 0, to: editor.state.doc.length, insert: selectedEntry.content },
+    });
+    renderCurrentView(selectedEntry.content, previewContent);
+    storageManager.manualSave(selectedEntry.content);
+    updateSaveStatus(selectedEntry.content);
+    showSaveNotification('已恢复历史版本');
+    closeModal();
+  });
 }
 
 // 更新保存状态
@@ -309,6 +418,116 @@ function formatTime(date: Date): string {
       minute: '2-digit',
     });
   }
+}
+
+// 格式化历史版本时间
+function formatHistoryTime(date: Date): string {
+  return date.toLocaleString('zh-CN', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function getHistoryPreview(content: string): string {
+  const firstLine = content.split('\n')[0]?.trim() ?? '';
+  if (!firstLine) {
+    return '（空内容）';
+  }
+  const maxLength = 20;
+  return firstLine.length > maxLength ? `${firstLine.slice(0, maxLength)}…` : firstLine;
+}
+
+type DiffLine = { type: 'context' | 'add' | 'remove' | 'header' | 'hunk'; content: string };
+
+function buildUnifiedDiff(current: string, target: string): DiffLine[] {
+  const currentLines = current.split('\n');
+  const targetLines = target.split('\n');
+  const dp = buildLcsTable(currentLines, targetLines);
+  const diffBody: DiffLine[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < currentLines.length && j < targetLines.length) {
+    if (currentLines[i] === targetLines[j]) {
+      diffBody.push({ type: 'context', content: currentLines[i] });
+      i += 1;
+      j += 1;
+    } else if (dp[i + 1][j] >= dp[i][j + 1]) {
+      diffBody.push({ type: 'remove', content: currentLines[i] });
+      i += 1;
+    } else {
+      diffBody.push({ type: 'add', content: targetLines[j] });
+      j += 1;
+    }
+  }
+  while (i < currentLines.length) {
+    diffBody.push({ type: 'remove', content: currentLines[i] });
+    i += 1;
+  }
+  while (j < targetLines.length) {
+    diffBody.push({ type: 'add', content: targetLines[j] });
+    j += 1;
+  }
+
+  const headerLines: DiffLine[] = [
+    { type: 'header', content: '--- 当前内容' },
+    { type: 'header', content: '+++ 选中版本' },
+  ];
+
+  const removedCount = diffBody.filter((line) => line.type !== 'add').length;
+  const addedCount = diffBody.filter((line) => line.type !== 'remove').length;
+  const hunkLine: DiffLine = {
+    type: 'hunk',
+    content: `@@ -1,${Math.max(removedCount, 0)} +1,${Math.max(addedCount, 0)} @@`,
+  };
+
+  return [...headerLines, hunkLine, ...diffBody];
+}
+
+function buildLcsTable(a: string[], b: string[]): number[][] {
+  const dp = Array.from({ length: a.length + 1 }, () => new Array(b.length + 1).fill(0));
+  for (let i = a.length - 1; i >= 0; i -= 1) {
+    for (let j = b.length - 1; j >= 0; j -= 1) {
+      if (a[i] === b[j]) {
+        dp[i][j] = dp[i + 1][j + 1] + 1;
+      } else {
+        dp[i][j] = Math.max(dp[i + 1][j], dp[i][j + 1]);
+      }
+    }
+  }
+  return dp;
+}
+
+function renderDiffLine(line: DiffLine): string {
+  const prefix =
+    line.type === 'add'
+      ? '+'
+      : line.type === 'remove'
+        ? '-'
+        : line.type === 'header' || line.type === 'hunk'
+          ? ''
+          : ' ';
+  const className =
+    line.type === 'add'
+      ? 'diff-add'
+      : line.type === 'remove'
+        ? 'diff-remove'
+        : line.type === 'header'
+          ? 'diff-header'
+          : line.type === 'hunk'
+            ? 'diff-hunk'
+            : 'diff-context';
+  return `<span class="${className}">${escapeHtml(prefix + line.content)}</span>`;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // 生成文件名
