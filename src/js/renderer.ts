@@ -153,14 +153,14 @@ marked.setOptions({
   mangle: false,
 });
 
-// 格式化日期显示（竖向显示，单行格式）
+// 格式化日期显示（竖向一列格式）
 function formatDate(timestamp: number): string {
   const date = new Date(timestamp);
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
-  // 竖向显示时，单行格式会自动竖着排列
-  return `${year}-${month}-${day}`;
+  // 竖向两行显示：第一行显示年份+"/"，第二行显示月份+"/"+日期
+  return `<span class="date-year">${year}/</span><span class="date-month-day">${month}/${day}</span>`;
 }
 
 // 格式化日期时间显示（包含年月日）
@@ -323,11 +323,9 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
       // 时间轴标记（左侧）
       html += '<div class="timeline-marker">';
       if (hasTimestamp && timeNode.timestamp) {
-        html += `<div class="timeline-dot" data-timestamp="${timeNode.timestamp}"></div>`;
         html += `<div class="timeline-date-label">${dateStr}</div>`;
       } else if (!isBasicInfoOnly) {
         // 只有非基本信息节点才显示"未指定"
-        html += `<div class="timeline-dot timeline-dot-unknown"></div>`;
         html += `<div class="timeline-date-label timeline-date-unknown">未指定</div>`;
       }
       // 基本信息节点如果没有时间戳，不显示任何标记
@@ -354,10 +352,8 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
         html += `<div class="stage-number-badge" data-stage="${stageNum}">${stageNum}</div>`;
         html += `<span class="stage-header-title">${escapeHtml(stage.title)}</span>`;
         html += '</div>';
-        html += '<span class="stage-toggle-icon">▼</span>';
-        html += '</div>';
         
-        // 时间信息条
+        // 时间信息条（移动到标题右侧）
         if (timeInfo.length > 0) {
           html += '<div class="stage-time-bar">';
           timeInfo.forEach(time => {
@@ -368,6 +364,9 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
           });
           html += '</div>';
         }
+        
+        html += '<span class="stage-toggle-icon">▼</span>';
+        html += '</div>';
         
         // 摘要（仅在折叠时显示）
         if (summary) {
