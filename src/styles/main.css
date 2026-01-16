@@ -1255,6 +1255,58 @@ header h1 {
   border-top: 1px solid rgba(102, 126, 234, 0.1);
 }
 
+.stage-subsection {
+  margin-top: var(--spacing-xs);
+}
+
+.stage-subsection-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: var(--text-primary);
+}
+
+.stage-subsection-toggle-icon {
+  font-size: 0.85em;
+  color: var(--text-muted);
+  transition: color var(--transition-fast);
+}
+
+.stage-subsection-header:hover .stage-subsection-toggle-icon {
+  color: var(--color-primary);
+}
+
+.stage-subsection-header h3,
+.stage-subsection-header h4,
+.stage-subsection-header h5,
+.stage-subsection-header h6 {
+  margin: 0;
+}
+
+.stage-subsection-body {
+  padding-left: var(--spacing-sm);
+  border-left: 2px solid rgba(102, 126, 234, 0.15);
+  margin-top: var(--spacing-xs);
+  overflow: hidden;
+  transition: max-height var(--transition-normal), opacity var(--transition-normal), margin-top var(--transition-normal), padding-top var(--transition-normal);
+}
+
+.stage-subsection.collapsed > .stage-subsection-body {
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.stage-subsection.expanded > .stage-subsection-body {
+  max-height: 8000px;
+  opacity: 1;
+  margin-top: var(--spacing-xs);
+  padding-top: var(--spacing-xs);
+}
+
 .lifecycle-stage.collapsed .stage-summary {
   display: block;
 }

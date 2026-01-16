@@ -214,6 +214,21 @@ async function loadTemplate(
 function initStageToggle(previewContent: HTMLElement): void {
   previewContent.addEventListener('click', (event) => {
     const target = event.target as HTMLElement | null;
+    const subsectionHeader = target?.closest('.stage-subsection-header');
+    if (subsectionHeader) {
+      const subsection = subsectionHeader.closest('.stage-subsection');
+      if (!subsection) return;
+
+      subsection.classList.toggle('collapsed');
+      subsection.classList.toggle('expanded');
+
+      const icon = subsectionHeader.querySelector('.stage-subsection-toggle-icon');
+      if (icon) {
+        icon.textContent = subsection.classList.contains('collapsed') ? '▶' : '▼';
+      }
+      return;
+    }
+
     const header = target?.closest('.stage-header');
     if (!header) return;
 
@@ -226,6 +241,18 @@ function initStageToggle(previewContent: HTMLElement): void {
     const icon = header.querySelector('.stage-toggle-icon');
     if (icon) {
       icon.textContent = stage.classList.contains('collapsed') ? '▼' : '▲';
+    }
+
+    if (stage.classList.contains('expanded')) {
+      const subsections = stage.querySelectorAll('.stage-subsection');
+      subsections.forEach((section) => {
+        section.classList.remove('expanded');
+        section.classList.add('collapsed');
+        const subIcon = section.querySelector('.stage-subsection-toggle-icon');
+        if (subIcon) {
+          subIcon.textContent = '▶';
+        }
+      });
     }
   });
 }

@@ -163,6 +163,77 @@ function extractSummary(content: string, maxLength: number = 100): string {
   return summary;
 }
 
+const subsectionHeadingSelector = 'h3, h4, h5, h6';
+
+function applyStageSubsections(stageBody: HTMLElement): void {
+  if (!stageBody.querySelector(subsectionHeadingSelector)) {
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  const childNodes = Array.from(stageBody.childNodes);
+  const sectionStack: Array<{ level: number; body: HTMLElement }> = [];
+
+  childNodes.forEach((node) => {
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const element = node as HTMLElement;
+      if (element.matches(subsectionHeadingSelector)) {
+        const level = Number(element.tagName.replace('H', ''));
+        if (Number.isNaN(level)) {
+          fragment.appendChild(element);
+          return;
+        }
+
+        while (sectionStack.length > 0 && level <= sectionStack[sectionStack.length - 1].level) {
+          sectionStack.pop();
+        }
+
+        const section = document.createElement('div');
+        section.className = 'stage-subsection collapsed';
+
+        const header = document.createElement('div');
+        header.className = 'stage-subsection-header';
+
+        const icon = document.createElement('span');
+        icon.className = 'stage-subsection-toggle-icon';
+        icon.textContent = '▶';
+
+        header.appendChild(icon);
+        header.appendChild(element);
+        section.appendChild(header);
+
+        const body = document.createElement('div');
+        body.className = 'stage-subsection-body';
+        section.appendChild(body);
+
+        const parentBody = sectionStack.length > 0 ? sectionStack[sectionStack.length - 1].body : null;
+        if (parentBody) {
+          parentBody.appendChild(section);
+        } else {
+          fragment.appendChild(section);
+        }
+
+        sectionStack.push({ level, body });
+        return;
+      }
+    }
+
+    if (sectionStack.length > 0) {
+      sectionStack[sectionStack.length - 1].body.appendChild(node);
+    } else {
+      fragment.appendChild(node);
+    }
+  });
+
+  stageBody.innerHTML = '';
+  stageBody.appendChild(fragment);
+}
+
+function applyLifecycleSubsections(container: HTMLElement): void {
+  const bodies = container.querySelectorAll<HTMLElement>('.stage-body');
+  bodies.forEach((body) => applyStageSubsections(body));
+}
+
 // 语言别名映射（将常见别名映射到 highlight.js 支持的语言）
 const languageAliases: Record<string, string> = {
   'shell': 'bash',  // shell 映射到 bash
@@ -429,7 +500,7 @@ export function updateLifecycleView(markdown: string, container: HTMLElement): b
         existingBar.remove();
       }
 
-      const body = stageElement.querySelector('.stage-body');
+      const body = stageElement.querySelector<HTMLElement>('.stage-body');
       if (!body) {
         return false;
       }
@@ -454,6 +525,7 @@ export function updateLifecycleView(markdown: string, container: HTMLElement): b
       } else {
         body.innerHTML = '<p class="stage-empty">暂无内容</p>';
       }
+      applyStageSubsections(body);
     }
   }
 
@@ -612,6 +684,7 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
 
   html += '</div>';
   container.innerHTML = html;
+  applyLifecycleSubsections(container);
 }
 
 // 解析漏洞利用阶段的内容
