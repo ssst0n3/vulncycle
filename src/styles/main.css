@@ -125,20 +125,27 @@ body {
 header {
   text-align: center;
   color: var(--text-white);
-  margin-bottom: var(--spacing-md);
-  padding: var(--spacing-sm) var(--spacing-md);
+  margin-bottom: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-md);
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-xs);
 }
 
 header h1 {
-  font-size: 2em;
-  margin-bottom: 6px;
+  font-size: 1.4em;
+  margin: 0;
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+  font-weight: 600;
 }
 
 .subtitle {
-  font-size: 0.95em;
-  opacity: 0.9;
+  font-size: 0.85em;
+  opacity: 0.85;
+  margin: 0;
+  font-weight: 400;
 }
 
 .editor-container {
@@ -1101,6 +1108,20 @@ header h1 {
 }
 
 @media (max-width: 768px) {
+  header {
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--spacing-xs) var(--spacing-sm);
+  }
+
+  header h1 {
+    font-size: 1.2em;
+  }
+
+  .subtitle {
+    font-size: 0.75em;
+  }
+
   .timeline-container {
     padding: 0 var(--spacing-xs);
   }
