@@ -582,18 +582,18 @@ header h1 {
   font-size: 0.7em;
   font-weight: 700;
   color: var(--color-primary-dark);
-  padding: 1px 6px;
+  padding: 2px 4px;
   text-align: center;
   transition: all var(--transition-fast);
   line-height: 1.2;
-  letter-spacing: 0.5px;
+  letter-spacing: 0;
   z-index: 5;
   width: auto;
   min-width: 20px;
   height: auto;
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  flex-direction: row;
+  align-items: flex-start;
   justify-content: center;
   gap: 2px;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
@@ -604,13 +604,46 @@ header h1 {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
-/* 日期元素竖向单列显示 */
-.timeline-date-label .date-year,
-.timeline-date-label .date-month-day {
+/* 日期2列容器 */
+.timeline-date-label .date-columns {
+  display: flex;
+  flex-direction: row;
+  gap: 2px;
+  align-items: flex-start;
+}
+
+/* 左列：年份 */
+.timeline-date-label .date-column-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+/* 右列：月日 */
+.timeline-date-label .date-column-right {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+/* 年份的每一位数字 */
+.timeline-date-label .date-year-digit {
   display: block;
-  line-height: 1.2;
-  white-space: nowrap;
+  line-height: 1.1;
   font-weight: 700;
+  min-width: 0.6em;
+  text-align: center;
+}
+
+/* 月日的每一位字符（包括数字和分隔符） */
+.timeline-date-label .date-month-day-char {
+  display: block;
+  line-height: 1.1;
+  font-weight: 700;
+  min-width: 0.6em;
+  text-align: center;
 }
 
 .timeline-date-label:hover {

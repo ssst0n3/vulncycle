@@ -153,14 +153,22 @@ marked.setOptions({
   mangle: false,
 });
 
-// 格式化日期显示（竖向一列格式）
+// 格式化日期显示（竖向2列格式）
 function formatDate(timestamp: number): string {
   const date = new Date(timestamp);
-  const year = date.getFullYear();
+  const year = String(date.getFullYear());
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
-  // 竖向两行显示：第一行显示年份+"/"，第二行显示月份+"/"+日期
-  return `<span class="date-year">${year}/</span><span class="date-month-day">${month}/${day}</span>`;
+  
+  // 左列：年份的每一位数字 + "-" 竖向排列
+  const yearWithDash = year + '-';
+  const yearChars = yearWithDash.split('').map(char => `<span class="date-year-digit">${char}</span>`).join('');
+  
+  // 右列：月日的每一位数字和分隔符竖向排列（月份 + "-" + 日期）
+  const monthDayWithDash = month + '-' + day;
+  const monthDayChars = monthDayWithDash.split('').map(char => `<span class="date-month-day-char">${char}</span>`).join('');
+  
+  return `<div class="date-columns"><div class="date-column-left">${yearChars}</div><div class="date-column-right">${monthDayChars}</div></div>`;
 }
 
 // 格式化日期时间显示（包含年月日）
