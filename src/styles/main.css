@@ -166,6 +166,9 @@ header h1 {
   flex-direction: column;
   background: var(--bg-secondary);
   min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .panel-header {
@@ -447,6 +450,9 @@ header h1 {
   padding: var(--spacing-sm) var(--spacing-sm) var(--spacing-sm) var(--spacing-sm);
   overflow-y: auto;
   background: var(--bg-primary);
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .preview-content > *:first-child {
@@ -765,6 +771,8 @@ header h1 {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
+  max-width: 100%;
+  min-width: 0;
 }
 
 /* 生命周期阶段 */
@@ -774,6 +782,8 @@ header h1 {
   transform: translateX(-10px);
   animation: fadeInRight 0.4s ease forwards;
   will-change: opacity, transform;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .lifecycle-stage:nth-child(1) {
@@ -813,6 +823,8 @@ header h1 {
   transition: all var(--transition-normal);
   position: relative;
   overflow: hidden;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .stage-card::before {
@@ -967,6 +979,9 @@ header h1 {
   font-size: 0.9em;
   overflow: hidden;
   transition: max-height var(--transition-normal), opacity var(--transition-normal), margin-top var(--transition-normal), padding-top var(--transition-normal);
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 /* 默认折叠状态（collapsed） */
@@ -1055,6 +1070,9 @@ header h1 {
   overflow-x: auto;
   margin: 8px 0;
   font-size: 0.85em;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .stage-body pre code {
@@ -1073,9 +1091,12 @@ header h1 {
 
 .stage-body table {
   width: 100%;
+  max-width: 100%;
   border-collapse: collapse;
   margin: 8px 0;
   font-size: 0.85em;
+  table-layout: auto;
+  box-sizing: border-box;
 }
 
 .stage-body th,
@@ -1570,6 +1591,9 @@ header h1 {
   padding: var(--spacing-md);
   color: var(--text-primary);
   line-height: 1.8;
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .exploitability-section-content h4 {
@@ -1613,6 +1637,9 @@ header h1 {
   border-radius: var(--radius-md);
   overflow-x: auto;
   margin: var(--spacing-sm) 0;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .exploitability-section-content pre code {
@@ -1667,6 +1694,9 @@ header h1 {
   color: var(--text-primary);
   line-height: 1.8;
   transition: box-shadow var(--transition-normal);
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .intelligence-content:hover {
@@ -1716,6 +1746,9 @@ header h1 {
   border-radius: var(--radius-md);
   overflow-x: auto;
   margin: var(--spacing-sm) 0;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .intelligence-content pre code {
@@ -1803,6 +1836,9 @@ header h1 {
   padding: var(--spacing-md);
   color: var(--text-primary);
   line-height: 1.8;
+  max-width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .analysis-section-content h4 {
@@ -1853,6 +1889,9 @@ header h1 {
   border-radius: var(--radius-md);
   overflow-x: auto;
   margin: var(--spacing-sm) 0;
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .analysis-section-content pre code {
