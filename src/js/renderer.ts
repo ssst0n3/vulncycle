@@ -1,4 +1,6 @@
-import { marked } from 'marked';
+import { Marked } from 'marked';
+import { markedHighlight } from 'marked-highlight';
+import hljs from 'highlight.js';
 import { parseLifecycleStages, extractTitle, type LifecycleStage } from './parser.js';
 
 // HTML 转义函数
@@ -6,6 +8,22 @@ export function escapeHtml(text: string): string {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+// 确保代码块有 hljs 类（后处理函数）
+function ensureHljsClass(html: string): string {
+  // 使用正则表达式为所有 code 标签添加 hljs 类（如果还没有）
+  return html.replace(
+    /<code\s+class="([^"]*language-[^"]*)"([^>]*)>/g,
+    (match, classes, rest) => {
+      // 如果已经有 hljs 类，不重复添加
+      if (classes.includes('hljs')) {
+        return match;
+      }
+      // 添加 hljs 类
+      return `<code class="hljs ${classes}"${rest}>`;
+    }
+  );
 }
 
 // 时间信息接口
@@ -145,7 +163,45 @@ function extractSummary(content: string, maxLength: number = 100): string {
   return summary;
 }
 
-// 配置 marked 解析器
+// 语言别名映射（将常见别名映射到 highlight.js 支持的语言）
+const languageAliases: Record<string, string> = {
+  'shell': 'bash',  // shell 映射到 bash
+  'zsh': 'bash',    // zsh 也使用 bash 高亮
+  'console': 'bash', // console 映射到 bash
+};
+
+// 创建配置了语法高亮的 marked 实例
+const marked = new Marked(
+  markedHighlight({
+    langPrefix: 'hljs language-',
+    highlight: (code: string, lang: string | undefined) => {
+      if (lang) {
+        // 处理语言别名
+        const normalizedLang = languageAliases[lang.toLowerCase()] || lang;
+        
+        if (hljs.getLanguage(normalizedLang)) {
+          try {
+            const highlighted = hljs.highlight(code, { language: normalizedLang });
+            return highlighted.value;
+          } catch (err) {
+            console.warn(`Failed to highlight code with language "${normalizedLang}":`, err);
+            return escapeHtml(code);
+          }
+        }
+      }
+      // 如果没有指定语言或语言不支持，尝试自动检测
+      try {
+        const highlighted = hljs.highlightAuto(code);
+        return highlighted.value;
+      } catch (err) {
+        console.warn('Failed to auto-highlight code:', err);
+        return escapeHtml(code);
+      }
+    },
+  })
+);
+
+// 配置 marked 的其他选项
 marked.setOptions({
   breaks: true,
   gfm: true,
@@ -290,7 +346,7 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
     const content = contentLines.join('\n').trim();
     html += '<div class="lifecycle-stages">';
     if (content) {
-      html += `<div class="stage-content">${marked.parse(content)}</div>`;
+      html += `<div class="stage-content">${ensureHljsClass(marked.parse(content))}</div>`;
     } else {
       html += '<div class="stage-content"><p style="text-align: center; color: #999; padding: 40px;">请在左侧输入 Markdown 内容...</p></div>';
     }
@@ -384,7 +440,7 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
 
         // 阶段内容
         if (content) {
-          html += `<div class="stage-body">${marked.parse(content)}</div>`;
+          html += `<div class="stage-body">${ensureHljsClass(marked.parse(content))}</div>`;
         } else {
           html += '<div class="stage-body"><p class="stage-empty">暂无内容</p></div>';
         }
@@ -509,7 +565,7 @@ export function renderExploitabilityView(markdown: string, container: HTMLElemen
       html += '</div>';
 
       if (section.content.trim()) {
-        html += `<div class="exploitability-section-content">${marked.parse(section.content)}</div>`;
+        html += `<div class="exploitability-section-content">${ensureHljsClass(marked.parse(section.content))}</div>`;
       } else {
         html += '<div class="exploitability-section-content"><p class="section-empty">暂无内容</p></div>';
       }
@@ -566,7 +622,7 @@ export function renderIntelligenceView(markdown: string, container: HTMLElement)
     html += '</div>';
   } else {
     html += '<div class="intelligence-content">';
-    html += `${marked.parse(content)}`;
+    html += `${ensureHljsClass(marked.parse(content))}`;
     html += '</div>';
   }
 
@@ -627,7 +683,7 @@ export function renderAnalysisView(markdown: string, container: HTMLElement): vo
       html += '</div>';
 
       if (stage.content) {
-        html += `<div class="analysis-section-content">${marked.parse(stage.content)}</div>`;
+        html += `<div class="analysis-section-content">${ensureHljsClass(marked.parse(stage.content))}</div>`;
       } else {
         html += '<div class="analysis-section-content"><p class="section-empty">暂无内容</p></div>';
       }

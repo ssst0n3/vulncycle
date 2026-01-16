@@ -1,4 +1,5 @@
 import '../styles/main.css';
+import 'highlight.js/styles/github-dark.css';
 import { initEditor } from './editor.js';
 import { renderLifecycleView, renderExploitabilityView, renderIntelligenceView, renderAnalysisView } from './renderer.js';
 import { storageManager, type SaveStatus } from './storage.js';
