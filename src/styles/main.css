@@ -79,6 +79,7 @@
   --timeline-dot-size: 24px;             /* 圆点的尺寸（宽高） */
   --timeline-dot-border-width: 4px;      /* 圆点的边框宽度 */
   --timeline-dot-align-adjust: -2px;     /* 圆点对齐微调（负值向左，正值向右） */
+  --timeline-date-label-align-adjust: -6px; /* 时间标签对齐微调（负值向左，正值向右） */
   
   /* 计算值 - 自动对齐 */
   /* 时间轴中心相对于 container 的位置 */
@@ -88,7 +89,7 @@
   /* marker 左边缘相对于 node-group 的位置（负数） */
   --timeline-marker-left: calc(-1 * var(--timeline-marker-width));
   /* 时间轴中心相对于 marker 左边缘的位置 */
-  --timeline-axis-to-marker-left: calc(var(--timeline-axis-center-relative) - var(--timeline-marker-left));
+  --timeline-axis-to-marker-left: calc(var(--timeline-axis-center-relative) - var(--timeline-marker-left) + var(--timeline-date-label-align-adjust));
   /* 圆点 left 位置：时间轴中心位置 - 圆点半径（使圆点中心对齐时间轴中心） */
   /* 注意：由于圆点有边框和阴影，实际视觉中心可能略有偏移，需要微调 */
   --timeline-dot-left: calc(var(--timeline-axis-to-marker-left) - var(--timeline-dot-size) / 2 - var(--timeline-dot-border-width) + var(--timeline-dot-align-adjust));
@@ -466,9 +467,9 @@ header h1 {
 /* 时间节点组 */
 .timeline-node-group {
   position: relative;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
   display: flex;
-  gap: var(--spacing-md);
+  gap: var(--spacing-sm);
   opacity: 0;
   transform: translateY(20px);
   animation: fadeInUp 0.6s ease forwards;
@@ -575,10 +576,11 @@ header h1 {
 /* 时间日期标签 */
 .timeline-date-label {
   position: absolute;
-  /* 对齐到时间轴中心 */
+  /* 对齐到时间轴中心：使用时间轴中心相对于 marker 左边缘的位置，然后通过 translateX(-50%) 居中 */
   left: var(--timeline-axis-to-marker-left);
   top: var(--spacing-xs);
   transform: translateX(-50%);
+  /* 确保时间标签相对于时间轴中心左右居中对齐 */
   font-size: 0.7em;
   font-weight: 700;
   color: var(--color-primary-dark);
@@ -593,7 +595,7 @@ header h1 {
   height: auto;
   display: flex;
   flex-direction: row;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   gap: 2px;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
@@ -662,6 +664,22 @@ header h1 {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
+/* 未指定标签竖向1列显示 */
+.timeline-date-unknown .unknown-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.timeline-date-unknown .unknown-char {
+  display: block;
+  line-height: 1.1;
+  font-weight: 700;
+  min-width: 0.6em;
+  text-align: center;
+}
+
 /* 时间线内容区域 */
 .timeline-content-area {
   flex: 1;
@@ -701,7 +719,7 @@ header h1 {
 .timeline-stages-container {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-xs);
 }
 
 /* 生命周期阶段 */
@@ -744,9 +762,9 @@ header h1 {
 .stage-card {
   background: var(--bg-primary);
   border-left: 4px solid var(--border-color-stage-1);
-  padding: var(--spacing-sm);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
   transition: all var(--transition-normal);
   position: relative;
   overflow: hidden;
@@ -765,9 +783,9 @@ header h1 {
 }
 
 .stage-card:hover {
-  transform: translateX(6px);
-  box-shadow: var(--shadow-lg);
-  border-left-width: 6px;
+  transform: translateX(4px);
+  box-shadow: var(--shadow-md);
+  border-left-width: 5px;
 }
 
 .stage-card:hover::before {
@@ -778,12 +796,12 @@ header h1 {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
   cursor: pointer;
   user-select: none;
-  padding: 4px 0;
+  padding: 2px 0;
   transition: all var(--transition-fast);
-  gap: var(--spacing-sm);
+  gap: var(--spacing-xs);
   flex-wrap: wrap;
 }
 
@@ -794,7 +812,7 @@ header h1 {
 .stage-header-left {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
+  gap: var(--spacing-xs);
   flex: 1;
 }
 
@@ -803,13 +821,13 @@ header h1 {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: var(--radius-full);
   background: var(--gradient-primary);
   color: var(--text-white);
   font-weight: 700;
-  font-size: 0.95em;
+  font-size: 0.85em;
   box-shadow: var(--shadow-sm);
   flex-shrink: 0;
   transition: all var(--transition-fast);
@@ -821,7 +839,7 @@ header h1 {
 }
 
 .stage-header-title {
-  font-size: 1.2em;
+  font-size: 1.05em;
   color: var(--color-primary);
   font-weight: 600;
   flex: 1;
@@ -829,10 +847,10 @@ header h1 {
 }
 
 .stage-toggle-icon {
-  font-size: 0.85em;
+  font-size: 0.75em;
   color: var(--text-muted);
   transition: transform var(--transition-normal);
-  margin-left: var(--spacing-sm);
+  margin-left: var(--spacing-xs);
   flex-shrink: 0;
 }
 
@@ -844,7 +862,7 @@ header h1 {
 .stage-time-bar {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--spacing-xs);
+  gap: 4px;
   margin: 0;
   padding: 0;
   align-items: center;
@@ -856,11 +874,11 @@ header h1 {
 .time-item {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-  padding: 3px 8px;
+  padding: 2px 6px;
   border-radius: var(--radius-sm);
-  font-size: 0.8em;
+  font-size: 0.75em;
   border: 1px solid rgba(102, 126, 234, 0.2);
   transition: all var(--transition-fast);
   white-space: nowrap;
@@ -889,19 +907,19 @@ header h1 {
 
 .stage-summary {
   color: var(--text-muted);
-  font-size: 0.9em;
-  line-height: 1.6;
-  margin-bottom: var(--spacing-sm);
-  padding: var(--spacing-xs) 0;
+  font-size: 0.85em;
+  line-height: 1.5;
+  margin-bottom: var(--spacing-xs);
+  padding: 4px 0;
   font-style: italic;
-  border-left: 3px solid rgba(102, 126, 234, 0.2);
-  padding-left: var(--spacing-sm);
+  border-left: 2px solid rgba(102, 126, 234, 0.2);
+  padding-left: var(--spacing-xs);
 }
 
 .stage-body {
   color: var(--text-secondary);
-  line-height: 1.7;
-  font-size: 0.95em;
+  line-height: 1.6;
+  font-size: 0.9em;
   overflow: hidden;
   transition: max-height var(--transition-normal), opacity var(--transition-normal), margin-top var(--transition-normal), padding-top var(--transition-normal);
 }
@@ -918,8 +936,8 @@ header h1 {
 .lifecycle-stage.expanded .stage-body {
   max-height: 10000px;
   opacity: 1;
-  margin-top: var(--spacing-sm);
-  padding-top: var(--spacing-sm);
+  margin-top: var(--spacing-xs);
+  padding-top: var(--spacing-xs);
   border-top: 1px solid rgba(102, 126, 234, 0.1);
 }
 
@@ -935,7 +953,7 @@ header h1 {
   color: var(--text-muted);
   font-style: italic;
   text-align: center;
-  padding: var(--spacing-md);
+  padding: var(--spacing-sm);
 }
 
 .stage-body h1,
@@ -943,37 +961,37 @@ header h1 {
 .stage-body h3,
 .stage-body h4 {
   color: var(--text-primary);
-  margin-top: var(--spacing-sm);
-  margin-bottom: 8px;
+  margin-top: var(--spacing-xs);
+  margin-bottom: 6px;
 }
 
 .stage-body h1 {
-  font-size: 1.5em;
+  font-size: 1.35em;
   border-bottom: 2px solid var(--color-primary);
-  padding-bottom: 6px;
+  padding-bottom: 4px;
 }
 
 .stage-body h2 {
-  font-size: 1.3em;
+  font-size: 1.2em;
   color: var(--color-primary);
 }
 
 .stage-body h3 {
-  font-size: 1.15em;
+  font-size: 1.05em;
 }
 
 .stage-body p {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .stage-body ul,
 .stage-body ol {
-  margin-left: var(--spacing-md);
-  margin-bottom: 10px;
+  margin-left: var(--spacing-sm);
+  margin-bottom: 8px;
 }
 
 .stage-body li {
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .stage-body code {
@@ -990,8 +1008,8 @@ header h1 {
   padding: var(--spacing-xs);
   border-radius: var(--radius-md);
   overflow-x: auto;
-  margin: 10px 0;
-  font-size: 0.9em;
+  margin: 8px 0;
+  font-size: 0.85em;
 }
 
 .stage-body pre code {
@@ -1002,8 +1020,8 @@ header h1 {
 
 .stage-body blockquote {
   border-left: 3px solid var(--color-primary);
-  padding-left: var(--spacing-sm);
-  margin: 10px 0;
+  padding-left: var(--spacing-xs);
+  margin: 8px 0;
   color: var(--text-secondary);
   font-style: italic;
 }
@@ -1011,13 +1029,13 @@ header h1 {
 .stage-body table {
   width: 100%;
   border-collapse: collapse;
-  margin: 10px 0;
-  font-size: 0.9em;
+  margin: 8px 0;
+  font-size: 0.85em;
 }
 
 .stage-body th,
 .stage-body td {
-  padding: 8px;
+  padding: 6px;
   text-align: left;
   border-bottom: 1px solid #ddd;
 }

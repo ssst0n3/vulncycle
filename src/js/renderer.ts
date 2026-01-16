@@ -333,8 +333,9 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
       if (hasTimestamp && timeNode.timestamp) {
         html += `<div class="timeline-date-label">${dateStr}</div>`;
       } else if (!isBasicInfoOnly) {
-        // 只有非基本信息节点才显示"未指定"
-        html += `<div class="timeline-date-label timeline-date-unknown">未指定</div>`;
+        // 只有非基本信息节点才显示"未指定"，竖向1列显示
+        const unknownChars = '未指定'.split('').map(char => `<span class="unknown-char">${escapeHtml(char)}</span>`).join('');
+        html += `<div class="timeline-date-label timeline-date-unknown"><div class="unknown-column">${unknownChars}</div></div>`;
       }
       // 基本信息节点如果没有时间戳，不显示任何标记
       html += '</div>';
