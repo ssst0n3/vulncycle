@@ -24,17 +24,13 @@ alwaysApply: true
 如果需要安装或更新依赖：
 
 1. **在容器中执行**：
-   - 使用 `docker-compose exec` 进入容器后执行
+   - 使用 `docker compose exec` 进入容器后执行
    - 或在 Dockerfile 构建过程中安装
-   - 或使用项目提供的 make 命令（如果配置了相关命令）
 
 2. **示例**：
    ```bash
    # 进入容器后执行
-   docker-compose exec <service_name> npm install
-   
-   # 或使用 make 命令（如果存在）
-   make npm-install
+   docker compose exec <service_name> npm install
    ```
 
 ---

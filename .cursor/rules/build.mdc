@@ -6,14 +6,14 @@ alwaysApply: true
 
 ## 核心要求
 
-**每次修改代码后，必须确保 `make build` 能够正常执行。**
+**每次修改代码后，必须确保 `docker compose up -d --build` 能够正常执行。**
 
 ## 执行流程
 
 1. **修改代码后**：在完成任何代码修改（包括但不限于源代码、配置文件、依赖项等）后，必须执行构建验证。
 
 2. **构建验证**：
-   - 运行 `make build` 命令
+   - 运行 `docker compose up -d --build` 命令
    - 确保构建过程**完全成功**，无任何错误或警告
    - 如果构建失败，必须修复问题后再继续
 
@@ -30,10 +30,10 @@ alwaysApply: true
 
 ## 错误处理
 
-如果 `make build` 失败：
+如果 `docker compose up -d --build` 失败：
 1. 分析错误原因
 2. 修复相关问题
-3. 重新执行 `make build` 直到成功
+3. 重新执行 `docker compose up -d --build` 直到成功
 4. 不要提交或确认无法构建的代码
 
 ---
