@@ -43,7 +43,14 @@
             <!-- 右侧预览 -->
             <div class="preview-panel">
                 <div class="panel-header">
-                    <h2>生命周期视图</h2>
+                    <div class="view-switcher">
+                        <button id="lifecycle-view-btn" class="view-btn active" data-view="lifecycle">
+                            <span>生命周期视图</span>
+                        </button>
+                        <button id="exploitability-view-btn" class="view-btn" data-view="exploitability">
+                            <span>可利用性视图</span>
+                        </button>
+                    </div>
                 </div>
                 <div id="preview-content" class="preview-content"></div>
             </div>

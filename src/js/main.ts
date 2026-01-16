@@ -1,8 +1,24 @@
 import '../styles/main.css';
 import { initEditor } from './editor.js';
-import { renderLifecycleView } from './renderer.js';
+import { renderLifecycleView, renderExploitabilityView } from './renderer.js';
 import { storageManager, type SaveStatus } from './storage.js';
 import type { EditorView } from '@codemirror/view';
+
+// 视图类型
+type ViewType = 'lifecycle' | 'exploitability';
+
+// 当前视图类型
+let currentView: ViewType = 'lifecycle';
+
+// 渲染当前视图
+function renderCurrentView(markdown: string, container: HTMLElement): void {
+  if (currentView === 'lifecycle') {
+    renderLifecycleView(markdown, container);
+    initStageToggle(); // 初始化折叠/展开功能
+  } else {
+    renderExploitabilityView(markdown, container);
+  }
+}
 
 // 初始化应用
 function initApp(): void {
@@ -21,8 +37,7 @@ function initApp(): void {
       clearTimeout(updateTimer);
     }
     updateTimer = setTimeout(() => {
-      renderLifecycleView(markdown, previewContent);
-      initStageToggle(); // 初始化折叠/展开功能
+      renderCurrentView(markdown, previewContent);
     }, 300); // 防抖，300ms 延迟
   };
 
@@ -35,8 +50,10 @@ function initApp(): void {
   });
 
   // 初始渲染
-  renderLifecycleView(editor.state.doc.toString(), previewContent);
-  initStageToggle(); // 初始化折叠/展开功能
+  renderCurrentView(editor.state.doc.toString(), previewContent);
+
+  // 初始化视图切换功能
+  initViewSwitcher(editor, previewContent);
 
   // 初始化保存功能
   initSaveFeature(editor);
@@ -46,6 +63,37 @@ function initApp(): void {
 
   // 初始化全屏功能
   initFullscreen();
+}
+
+// 初始化视图切换功能
+function initViewSwitcher(editor: EditorView, previewContent: HTMLElement): void {
+  const lifecycleBtn = document.getElementById('lifecycle-view-btn');
+  const exploitabilityBtn = document.getElementById('exploitability-view-btn');
+
+  if (!lifecycleBtn || !exploitabilityBtn) {
+    console.error('View switcher buttons not found');
+    return;
+  }
+
+  const switchView = (viewType: ViewType) => {
+    currentView = viewType;
+    
+    // 更新按钮状态
+    if (viewType === 'lifecycle') {
+      lifecycleBtn.classList.add('active');
+      exploitabilityBtn.classList.remove('active');
+    } else {
+      lifecycleBtn.classList.remove('active');
+      exploitabilityBtn.classList.add('active');
+    }
+
+    // 重新渲染当前视图
+    const markdown = editor.state.doc.toString();
+    renderCurrentView(markdown, previewContent);
+  };
+
+  lifecycleBtn.addEventListener('click', () => switchView('lifecycle'));
+  exploitabilityBtn.addEventListener('click', () => switchView('exploitability'));
 }
 
 // 加载模板
@@ -61,8 +109,7 @@ async function loadTemplate(
     editor.dispatch({
       changes: { from: 0, to: editor.state.doc.length, insert: savedContent },
     });
-    renderLifecycleView(savedContent, previewContent);
-    initStageToggle();
+    renderCurrentView(savedContent, previewContent);
     updateSaveStatus(savedContent);
     return;
   }
@@ -77,14 +124,13 @@ async function loadTemplate(
     editor.dispatch({
       changes: { from: 0, to: editor.state.doc.length, insert: text },
     });
-    renderLifecycleView(text, previewContent);
-    initStageToggle(); // 初始化折叠/展开功能
+    renderCurrentView(text, previewContent);
     // 保存模板内容
     storageManager.saveToLocalStorage(text);
     updateSaveStatus(text);
   } catch (err) {
     console.log('无法加载模板文件，使用空编辑器');
-    renderLifecycleView('', previewContent);
+    renderCurrentView('', previewContent);
     updateSaveStatus('');
   }
 }

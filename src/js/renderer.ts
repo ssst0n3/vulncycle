@@ -407,3 +407,120 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
   container.innerHTML = html;
 }
 
+// 解析漏洞利用阶段的内容
+interface ExploitabilitySection {
+  title: string;
+  content: string;
+}
+
+// 提取漏洞利用阶段（第8节）的内容
+function extractExploitabilityContent(markdown: string): {
+  title: string;
+  sections: ExploitabilitySection[];
+} {
+  const stages = parseLifecycleStages(markdown);
+  const exploitStage = stages.find(stage => stage.stageNum === 8);
+  
+  if (!exploitStage) {
+    return {
+      title: '漏洞利用',
+      sections: [],
+    };
+  }
+
+  const sections: ExploitabilitySection[] = [];
+  const lines = exploitStage.content.split('\n');
+  let currentSection: { title: string; content: string[] } | null = null;
+
+  for (const line of lines) {
+    // 检测三级标题（###）
+    const h3Match = line.match(/^###\s+(.+)$/);
+    if (h3Match) {
+      // 保存前一个子节
+      if (currentSection) {
+        sections.push({
+          title: currentSection.title,
+          content: currentSection.content.join('\n').trim(),
+        });
+      }
+      // 开始新子节
+      currentSection = {
+        title: h3Match[1].trim(),
+        content: [],
+      };
+      continue;
+    }
+
+    // 收集内容
+    if (currentSection) {
+      currentSection.content.push(line);
+    }
+  }
+
+  // 保存最后一个子节
+  if (currentSection) {
+    sections.push({
+      title: currentSection.title,
+      content: currentSection.content.join('\n').trim(),
+    });
+  }
+
+  // 如果没有找到任何三级标题，将整个内容作为一个部分显示
+  if (sections.length === 0 && exploitStage.content.trim()) {
+    sections.push({
+      title: '漏洞利用内容',
+      content: exploitStage.content.trim(),
+    });
+  }
+
+  return {
+    title: exploitStage.title,
+    sections,
+  };
+}
+
+// 渲染可利用性视图
+export function renderExploitabilityView(markdown: string, container: HTMLElement): void {
+  if (!markdown.trim()) {
+    container.innerHTML =
+      '<div class="exploitability-container"><p style="text-align: center; color: #999; padding: 40px;">请在左侧输入 Markdown 内容...</p></div>';
+    return;
+  }
+
+  const docTitle = extractTitle(markdown);
+  const { title, sections } = extractExploitabilityContent(markdown);
+
+  let html = '<div class="exploitability-container">';
+  html += `<h1 class="exploitability-title">${escapeHtml(docTitle)}</h1>`;
+  html += `<h2 class="exploitability-main-title">${escapeHtml(title)}</h2>`;
+
+  if (sections.length === 0) {
+    html += '<div class="exploitability-empty">';
+    html += '<p style="text-align: center; color: #999; padding: 40px;">未找到漏洞利用相关内容，请确保文档包含第8节"漏洞利用"的内容。</p>';
+    html += '</div>';
+  } else {
+    html += '<div class="exploitability-sections">';
+
+    sections.forEach((section, index) => {
+      const sectionId = `exploitability-section-${index}`;
+      html += `<div class="exploitability-section" id="${sectionId}">`;
+      html += `<div class="exploitability-section-header">`;
+      html += `<h3 class="exploitability-section-title">${escapeHtml(section.title)}</h3>`;
+      html += '</div>';
+
+      if (section.content.trim()) {
+        html += `<div class="exploitability-section-content">${marked.parse(section.content)}</div>`;
+      } else {
+        html += '<div class="exploitability-section-content"><p class="section-empty">暂无内容</p></div>';
+      }
+
+      html += '</div>';
+    });
+
+    html += '</div>';
+  }
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+

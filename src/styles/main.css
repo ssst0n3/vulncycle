@@ -212,6 +212,51 @@ header h1 {
   gap: 8px;
 }
 
+/* 视图切换器 */
+.view-switcher {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.view-btn {
+  padding: 6px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-white);
+  border-radius: var(--radius-md);
+  font-size: 0.9em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
+  letter-spacing: 0.2px;
+}
+
+.view-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.view-btn.active {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2),
+              0 1px 3px rgba(0, 0, 0, 0.2);
+  font-weight: 600;
+}
+
+.view-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
 .panel-header-actions {
   display: flex;
   align-items: center;
@@ -1451,4 +1496,134 @@ header h1 {
     height: 26px;
     padding: 0;
   }
+
+  .view-btn {
+    padding: 4px 12px;
+    font-size: 0.85em;
+  }
+}
+
+/* 可利用性视图样式 */
+.exploitability-container {
+  max-width: 100%;
+  margin: 0 auto;
+  padding: var(--spacing-md);
+}
+
+.exploitability-title {
+  font-size: 2em;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 3px solid var(--color-primary);
+}
+
+.exploitability-main-title {
+  font-size: 1.5em;
+  font-weight: 600;
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-lg);
+  padding-left: var(--spacing-sm);
+  border-left: 4px solid var(--color-primary);
+}
+
+.exploitability-empty {
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: var(--text-muted);
+}
+
+.exploitability-sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.exploitability-section {
+  background: var(--bg-primary);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: box-shadow var(--transition-normal);
+}
+
+.exploitability-section:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.exploitability-section-header {
+  background: var(--gradient-stage-8);
+  padding: var(--spacing-md);
+  border-bottom: 2px solid rgba(255, 154, 158, 0.3);
+}
+
+.exploitability-section-title {
+  margin: 0;
+  font-size: 1.2em;
+  font-weight: 600;
+  color: var(--text-white);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.exploitability-section-content {
+  padding: var(--spacing-md);
+  color: var(--text-primary);
+  line-height: 1.8;
+}
+
+.exploitability-section-content h4 {
+  color: var(--color-primary);
+  margin-top: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  font-weight: 600;
+}
+
+.exploitability-section-content h4:first-child {
+  margin-top: 0;
+}
+
+.exploitability-section-content p {
+  margin-bottom: var(--spacing-sm);
+}
+
+.exploitability-section-content ul,
+.exploitability-section-content ol {
+  margin-left: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+}
+
+.exploitability-section-content li {
+  margin-bottom: var(--spacing-xs);
+}
+
+.exploitability-section-content code {
+  background: var(--bg-code);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-family-mono);
+  font-size: 0.9em;
+  color: var(--color-primary);
+}
+
+.exploitability-section-content pre {
+  background: var(--bg-code-block);
+  color: var(--text-light);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  margin: var(--spacing-sm) 0;
+}
+
+.exploitability-section-content pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+
+.section-empty {
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+  padding: var(--spacing-md);
 }
