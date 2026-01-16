@@ -249,6 +249,30 @@ interface TimeNode {
   }>;
 }
 
+function renderTimeBarHtml(timeInfo: TimeInfo[]): string {
+  return timeInfo
+    .map((time) => {
+      const timeLabel =
+        time.timestamp !== null
+          ? `<span class="time-label-name">${escapeHtml(time.label)}</span><span class="time-label-value">${escapeHtml(time.value)}</span>`
+          : `<span class="time-label-name">${escapeHtml(time.label)}</span><span class="time-label-value time-label-pending">${escapeHtml(time.value)}</span>`;
+      return `<div class="time-item">${timeLabel}</div>`;
+    })
+    .join('');
+}
+
+function renderTimelineMarkerHtml(timeNode: TimeNode, isBasicInfoOnly: boolean): string {
+  const hasTimestamp = timeNode.timestamp !== null;
+  if (hasTimestamp && timeNode.timestamp) {
+    return `<div class="timeline-date-label">${formatDate(timeNode.timestamp)}</div>`;
+  }
+  if (!isBasicInfoOnly) {
+    const unknownChars = '未指定'.split('').map(char => `<span class="unknown-char">${escapeHtml(char)}</span>`).join('');
+    return `<div class="timeline-date-label timeline-date-unknown"><div class="unknown-column">${unknownChars}</div></div>`;
+  }
+  return '';
+}
+
 // 按时间分组阶段
 function groupStagesByTime(stages: LifecycleStage[]): TimeNode[] {
   const timeMap = new Map<number | string, TimeNode>();
@@ -307,6 +331,133 @@ function groupStagesByTime(stages: LifecycleStage[]): TimeNode[] {
   
   // 合并：先显示"基本信息"，再显示其他有时间戳的，最后显示无时间戳的
   return [...basicInfoNodes, ...otherNodesWithTime, ...otherNodesWithoutTime];
+}
+
+export function updateLifecycleView(markdown: string, container: HTMLElement): boolean {
+  if (!markdown.trim()) {
+    return false;
+  }
+
+  const stages = parseLifecycleStages(markdown);
+  if (stages.length === 0) {
+    return false;
+  }
+
+  const lifecycleRoot = container.querySelector('.lifecycle-container');
+  const timelineWrapper = container.querySelector('.timeline-wrapper');
+  if (!lifecycleRoot || !timelineWrapper) {
+    return false;
+  }
+
+  const title = extractTitle(markdown);
+  const titleEl = container.querySelector('.lifecycle-title');
+  if (titleEl) {
+    titleEl.textContent = title;
+  }
+
+  const timeNodes = groupStagesByTime(stages);
+  const nodeGroups = container.querySelectorAll('.timeline-node-group');
+  if (nodeGroups.length !== timeNodes.length) {
+    return false;
+  }
+
+  for (let nodeIndex = 0; nodeIndex < timeNodes.length; nodeIndex += 1) {
+    const timeNode = timeNodes[nodeIndex];
+    const nodeGroup = container.querySelector(`.timeline-node-group[data-index="${nodeIndex}"]`);
+    if (!nodeGroup) {
+      return false;
+    }
+
+    const isBasicInfoOnly = timeNode.stages.every(s => s.stage.stageNum === 1);
+    nodeGroup.setAttribute('data-timestamp', timeNode.timestamp ? String(timeNode.timestamp) : '');
+
+    const marker = nodeGroup.querySelector('.timeline-marker');
+    if (!marker) {
+      return false;
+    }
+    marker.innerHTML = renderTimelineMarkerHtml(timeNode, isBasicInfoOnly);
+
+    const stageElements = nodeGroup.querySelectorAll('.lifecycle-stage');
+    if (stageElements.length !== timeNode.stages.length) {
+      return false;
+    }
+
+    for (let stageIndex = 0; stageIndex < timeNode.stages.length; stageIndex += 1) {
+      const { stage, timeInfo } = timeNode.stages[stageIndex];
+      const stageElement = nodeGroup.querySelector(
+        `.lifecycle-stage[data-stage-index="${stageIndex}"]`
+      );
+      if (!stageElement) {
+        return false;
+      }
+
+      const stageNum = stage.stageNum ?? '?';
+      stageElement.setAttribute('data-stage', String(stageNum));
+
+      const badge = stageElement.querySelector('.stage-number-badge');
+      if (badge) {
+        badge.textContent = String(stageNum);
+        badge.setAttribute('data-stage', String(stageNum));
+      }
+
+      const headerTitle = stageElement.querySelector('.stage-header-title');
+      if (headerTitle) {
+        headerTitle.textContent = stage.title;
+      }
+
+      const header = stageElement.querySelector('.stage-header');
+      if (!header) {
+        return false;
+      }
+      const existingBar = header.querySelector('.stage-time-bar');
+      if (timeInfo.length > 0) {
+        const timeBarHtml = renderTimeBarHtml(timeInfo);
+        if (existingBar) {
+          existingBar.innerHTML = timeBarHtml;
+        } else {
+          const bar = document.createElement('div');
+          bar.className = 'stage-time-bar';
+          bar.innerHTML = timeBarHtml;
+          const toggleIcon = header.querySelector('.stage-toggle-icon');
+          if (toggleIcon) {
+            header.insertBefore(bar, toggleIcon);
+          } else {
+            header.appendChild(bar);
+          }
+        }
+      } else if (existingBar) {
+        existingBar.remove();
+      }
+
+      const body = stageElement.querySelector('.stage-body');
+      if (!body) {
+        return false;
+      }
+
+      const summary = extractSummary(stage.content.trim());
+      const summaryEl = stageElement.querySelector('.stage-summary');
+      if (summary) {
+        if (summaryEl) {
+          summaryEl.textContent = summary;
+        } else {
+          const newSummary = document.createElement('div');
+          newSummary.className = 'stage-summary';
+          newSummary.textContent = summary;
+          body.parentElement?.insertBefore(newSummary, body);
+        }
+      } else if (summaryEl) {
+        summaryEl.remove();
+      }
+
+      if (stage.content.trim()) {
+        body.innerHTML = `${ensureHljsClass(marked.parse(stage.content.trim()))}`;
+      } else {
+        body.innerHTML = '<p class="stage-empty">暂无内容</p>';
+      }
+    }
+  }
+
+  return true;
 }
 
 // 渲染生命周期视图

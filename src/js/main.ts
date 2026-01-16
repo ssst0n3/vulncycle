@@ -1,7 +1,13 @@
 import '../styles/main.css';
 import 'highlight.js/styles/github-dark.css';
 import { initEditor } from './editor.js';
-import { renderLifecycleView, renderExploitabilityView, renderIntelligenceView, renderAnalysisView } from './renderer.js';
+import {
+  renderLifecycleView,
+  renderExploitabilityView,
+  renderIntelligenceView,
+  renderAnalysisView,
+  updateLifecycleView,
+} from './renderer.js';
 import { storageManager, type SaveStatus } from './storage.js';
 import type { EditorView } from '@codemirror/view';
 
@@ -11,17 +17,72 @@ type ViewType = 'lifecycle' | 'exploitability' | 'intelligence' | 'analysis';
 // 当前视图类型
 let currentView: ViewType = 'lifecycle';
 
+type LifecycleViewState = {
+  expandedStageKeys: Set<string>;
+  scrollTop: number;
+};
+
+function getLifecycleStageKey(stage: Element): string {
+  const nodeIndex = stage.getAttribute('data-node-index') ?? '';
+  const stageIndex = stage.getAttribute('data-stage-index') ?? '';
+  const stageNum = stage.getAttribute('data-stage') ?? '';
+  return `${nodeIndex}:${stageIndex}:${stageNum}`;
+}
+
+function captureLifecycleState(container: HTMLElement): LifecycleViewState {
+  const expandedStageKeys = new Set<string>();
+  const stageElements = container.querySelectorAll('.lifecycle-stage.expanded');
+  stageElements.forEach((stage) => {
+    expandedStageKeys.add(getLifecycleStageKey(stage));
+  });
+  return {
+    expandedStageKeys,
+    scrollTop: container.scrollTop,
+  };
+}
+
+function restoreLifecycleState(container: HTMLElement, state: LifecycleViewState): void {
+  const stageElements = container.querySelectorAll('.lifecycle-stage');
+  stageElements.forEach((stage) => {
+    const key = getLifecycleStageKey(stage);
+    if (state.expandedStageKeys.has(key)) {
+      stage.classList.remove('collapsed');
+      stage.classList.add('expanded');
+    }
+    const icon = stage.querySelector('.stage-toggle-icon');
+    if (icon) {
+      icon.textContent = stage.classList.contains('collapsed') ? '▼' : '▲';
+    }
+  });
+  container.scrollTop = state.scrollTop;
+}
+
 // 渲染当前视图
 function renderCurrentView(markdown: string, container: HTMLElement): void {
+  const initialScrollTop = container.scrollTop;
+  let lifecycleState: LifecycleViewState | null = null;
+
+  if (currentView === 'lifecycle') {
+    if (updateLifecycleView(markdown, container)) {
+      return;
+    }
+    lifecycleState = captureLifecycleState(container);
+  }
+
   if (currentView === 'lifecycle') {
     renderLifecycleView(markdown, container);
-    initStageToggle(); // 初始化折叠/展开功能
   } else if (currentView === 'exploitability') {
     renderExploitabilityView(markdown, container);
   } else if (currentView === 'intelligence') {
     renderIntelligenceView(markdown, container);
   } else {
     renderAnalysisView(markdown, container);
+  }
+
+  if (currentView === 'lifecycle' && lifecycleState) {
+    restoreLifecycleState(container, lifecycleState);
+  } else {
+    container.scrollTop = initialScrollTop;
   }
 }
 
@@ -56,6 +117,9 @@ function initApp(): void {
 
   // 初始渲染
   renderCurrentView(editor.state.doc.toString(), previewContent);
+
+  // 初始化折叠/展开功能（事件委托）
+  initStageToggle(previewContent);
 
   // 初始化视图切换功能
   initViewSwitcher(editor, previewContent);
@@ -142,23 +206,22 @@ async function loadTemplate(
 }
 
 // 初始化章节折叠/展开功能
-function initStageToggle(): void {
-  const stageHeaders = document.querySelectorAll('.stage-header');
-  
-  stageHeaders.forEach((header) => {
-    header.addEventListener('click', () => {
-      const stage = header.closest('.lifecycle-stage');
-      if (stage) {
-        stage.classList.toggle('collapsed');
-        stage.classList.toggle('expanded');
-        
-        // 更新图标
-        const icon = header.querySelector('.stage-toggle-icon');
-        if (icon) {
-          icon.textContent = stage.classList.contains('collapsed') ? '▼' : '▲';
-        }
-      }
-    });
+function initStageToggle(previewContent: HTMLElement): void {
+  previewContent.addEventListener('click', (event) => {
+    const target = event.target as HTMLElement | null;
+    const header = target?.closest('.stage-header');
+    if (!header) return;
+
+    const stage = header.closest('.lifecycle-stage');
+    if (!stage) return;
+
+    stage.classList.toggle('collapsed');
+    stage.classList.toggle('expanded');
+
+    const icon = header.querySelector('.stage-toggle-icon');
+    if (icon) {
+      icon.textContent = stage.classList.contains('collapsed') ? '▼' : '▲';
+    }
   });
 }
 
