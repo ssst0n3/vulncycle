@@ -20,16 +20,16 @@
 
 ```bash
 # 启动服务
-make up
+docker compose up -d
 
 # 停止服务
-make down
+docker compose down
 
 # 构建镜像
-make build
+docker compose build
 
 # 进入容器 shell
-make shell
+docker compose exec app sh
 ```
 
 服务启动后访问 `http://localhost:3000`
@@ -38,65 +38,45 @@ make shell
 
 ```bash
 # 安装依赖
-make local-install
-# 或
 npm install
 
 # 启动开发服务器
-make local-dev
-# 或
 npm run dev
 
 # 构建生产版本
-make local-build
-# 或
 npm run build
 
 # 预览生产构建
-make local-preview
-# 或
 npm run preview
 ```
 
 ## 容器化部署
 
-项目使用 Docker Compose 进行容器化部署，提供了简洁的 Makefile 命令。
+项目使用 Docker Compose 进行容器化部署。
 
 ### 主要命令
 
 ```bash
-# 查看所有可用命令
-make help
-
 # 启动服务
-make up
-
-# 停止服务
-make down
-
-# 构建镜像
-make build
-
-# 进入容器 shell
-make shell
-```
-
-### 直接使用 Docker Compose
-
-如需更细粒度的控制，也可以直接使用 Docker Compose 命令：
-
-```bash
-# 启动服务
-docker-compose up -d
+docker compose up -d
 
 # 查看日志
-docker-compose logs -f
+docker compose logs -f
 
 # 停止服务
-docker-compose down
+docker compose down
 
 # 查看服务状态
-docker-compose ps
+docker compose ps
+
+# 构建镜像
+docker compose build
+
+# 进入容器 shell
+docker compose exec app sh
+
+# 重新构建并启动服务
+docker compose up -d --build
 ```
 
 
@@ -138,14 +118,7 @@ VulnCycleInsight/
 │   │   └── main.js        # 入口文件
 │   └── styles/       # 样式文件
 │       └── main.css  # 主样式
-├── make/             # Makefile 模块（模块化配置）
-│   ├── config.mk     # 项目配置
-│   ├── help.mk       # 帮助信息
-│   ├── local.mk      # 本地开发命令
-│   ├── compose.mk    # Docker Compose 命令（推荐）
-│   └── clean.mk      # 清理命令
 ├── index.html        # HTML 入口
-├── Makefile          # 主 Makefile（导入所有模块）
 ├── Dockerfile        # Dockerfile
 ├── docker-compose.yml # Docker Compose 配置
 ├── nginx.conf        # Nginx 配置
