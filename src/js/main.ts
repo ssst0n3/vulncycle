@@ -303,6 +303,11 @@ function initStageToggle(previewContent: HTMLElement): void {
       return;
     }
 
+    // 如果点击的是链接，不处理展开/折叠，让链接正常跳转
+    if (target?.closest('.metadata-link')) {
+      return;
+    }
+
     const header = target?.closest('.stage-header');
     if (!header) return;
 

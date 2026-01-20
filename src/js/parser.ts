@@ -161,8 +161,13 @@ export function extractStageMetadata(content: string): StageMetadata {
       continue; // 跳过未填写的字段
     }
     
-    // 移除括号内容,保留主要信息
-    value = value.replace(/\s*\([^)]*\)\s*$/, '').trim();
+    // 检查是否为 Markdown 链接格式 [text](url)
+    const isMarkdownLink = /^\[.+\]\(.+\)$/.test(value);
+    
+    // 如果不是 Markdown 链接，移除括号内的注释内容（如 "2024-01-01 (待修改)"）
+    if (!isMarkdownLink) {
+      value = value.replace(/\s*\([^)]*\)\s*$/, '').trim();
+    }
     
     // 判断字段类型
     let type: MetadataItem['type'] = 'text';
