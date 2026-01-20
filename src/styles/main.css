@@ -1216,6 +1216,184 @@ header h1 {
   font-style: italic;
 }
 
+/* 元数据区域样式 - 显示在标题右侧，单行不换行 */
+.stage-metadata {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-end;
+  overflow: hidden;
+  max-width: 60%;
+}
+
+.metadata-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-sm);
+  font-size: 0.75em;
+  transition: all var(--transition-fast);
+  border: 1px solid rgba(102, 126, 234, 0.15);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.metadata-item:hover {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: var(--color-primary);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.15);
+}
+
+.metadata-icon {
+  font-size: 0.9em;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.metadata-label {
+  font-weight: 600;
+  color: var(--color-primary);
+  flex-shrink: 0;
+  font-size: 0.95em;
+}
+
+.metadata-label::after {
+  content: ':';
+  margin-left: 1px;
+}
+
+.metadata-value {
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 0.95em;
+}
+
+/* 时间类型元数据 */
+.metadata-time-item {
+  background: linear-gradient(135deg, 
+    rgba(102, 126, 234, 0.08) 0%, 
+    rgba(118, 75, 162, 0.08) 100%);
+  border-color: rgba(102, 126, 234, 0.25);
+}
+
+.metadata-time-item:hover {
+  background: linear-gradient(135deg, 
+    rgba(102, 126, 234, 0.12) 0%, 
+    rgba(118, 75, 162, 0.12) 100%);
+  border-color: var(--color-primary);
+}
+
+.metadata-time-item .metadata-icon {
+  color: var(--color-primary);
+}
+
+/* 人员类型元数据 */
+.metadata-person-item {
+  background: linear-gradient(135deg, 
+    rgba(75, 192, 192, 0.08) 0%, 
+    rgba(44, 163, 163, 0.08) 100%);
+  border-color: rgba(75, 192, 192, 0.25);
+}
+
+.metadata-person-item:hover {
+  background: linear-gradient(135deg, 
+    rgba(75, 192, 192, 0.12) 0%, 
+    rgba(44, 163, 163, 0.12) 100%);
+  border-color: #4bc0c0;
+}
+
+.metadata-person-item .metadata-icon {
+  color: #4bc0c0;
+}
+
+.metadata-person-item .metadata-label {
+  color: #2ca3a3;
+}
+
+/* 版本类型元数据 */
+.metadata-version-item {
+  background: linear-gradient(135deg, 
+    rgba(255, 159, 64, 0.08) 0%, 
+    rgba(255, 129, 34, 0.08) 100%);
+  border-color: rgba(255, 159, 64, 0.25);
+}
+
+.metadata-version-item:hover {
+  background: linear-gradient(135deg, 
+    rgba(255, 159, 64, 0.12) 0%, 
+    rgba(255, 129, 34, 0.12) 100%);
+  border-color: #ff9f40;
+}
+
+.metadata-version-item .metadata-icon {
+  color: #ff9f40;
+}
+
+.metadata-version-item .metadata-label {
+  color: #ff8122;
+}
+
+/* 链接类型元数据 */
+.metadata-link-item {
+  background: linear-gradient(135deg, 
+    rgba(153, 102, 255, 0.08) 0%, 
+    rgba(123, 72, 225, 0.08) 100%);
+  border-color: rgba(153, 102, 255, 0.25);
+}
+
+.metadata-link-item:hover {
+  background: linear-gradient(135deg, 
+    rgba(153, 102, 255, 0.12) 0%, 
+    rgba(123, 72, 225, 0.12) 100%);
+  border-color: #9966ff;
+}
+
+.metadata-link-item .metadata-icon {
+  color: #9966ff;
+}
+
+.metadata-link-item .metadata-label {
+  color: #7b48e1;
+}
+
+.metadata-link {
+  color: #9966ff !important;
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.metadata-link:hover {
+  color: #7b48e1 !important;
+  text-decoration: underline;
+}
+
+/* 文本类型元数据 */
+.metadata-text-item {
+  background: linear-gradient(135deg, 
+    rgba(150, 150, 150, 0.08) 0%, 
+    rgba(120, 120, 120, 0.08) 100%);
+  border-color: rgba(150, 150, 150, 0.25);
+}
+
+.metadata-text-item:hover {
+  background: linear-gradient(135deg, 
+    rgba(150, 150, 150, 0.12) 0%, 
+    rgba(120, 120, 120, 0.12) 100%);
+  border-color: #969696;
+}
+
+.metadata-text-item .metadata-label {
+  color: #787878;
+}
+
 .stage-summary {
   color: var(--text-muted);
   font-size: 0.85em;

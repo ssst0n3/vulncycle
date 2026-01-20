@@ -1,7 +1,7 @@
 import { Marked } from 'marked';
 import { markedHighlight } from 'marked-highlight';
 import hljs from 'highlight.js';
-import { parseLifecycleStages, extractTitle, type LifecycleStage } from './parser.js';
+import { parseLifecycleStages, extractTitle, type LifecycleStage, type StageMetadata, type MetadataItem } from './parser.js';
 
 // HTML 转义函数
 export function escapeHtml(text: string): string {
@@ -321,6 +321,58 @@ marked.setOptions({
   mangle: false,
 });
 
+// 渲染元数据HTML（仅渲染前几个关键元数据，单行显示）
+function renderMetadataHtml(metadata: StageMetadata | undefined, maxItems: number = 5): string {
+  if (!metadata || metadata.items.length === 0) {
+    return '';
+  }
+  
+  // 定义类型优先级：时间 > 版本 > 人员 > 链接 > 文本
+  const typePriority: Record<MetadataItem['type'], number> = {
+    'time': 1,
+    'version': 2,
+    'person': 3,
+    'link': 4,
+    'text': 5,
+  };
+  
+  // 按优先级排序元数据项
+  const sortedItems = [...metadata.items].sort((a, b) => {
+    const priorityDiff = typePriority[a.type] - typePriority[b.type];
+    if (priorityDiff !== 0) return priorityDiff;
+    // 同类型按原始顺序
+    return 0;
+  });
+  
+  // 只取前 maxItems 个
+  const displayItems = sortedItems.slice(0, maxItems);
+  
+  let html = '<div class="stage-metadata">';
+  
+  displayItems.forEach(item => {
+    const itemClass = `metadata-item metadata-${item.type}-item`;
+    html += `<div class="${itemClass}">`;
+    
+    if (item.icon) {
+      html += `<span class="metadata-icon">${item.icon}</span>`;
+    }
+    
+    html += `<span class="metadata-label">${escapeHtml(item.label)}</span>`;
+    
+    // 如果是链接类型且是URL，渲染为链接
+    if (item.type === 'link' && (item.value.startsWith('http') || item.value.includes('://'))) {
+      html += `<a class="metadata-value metadata-link" href="${escapeHtml(item.value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.value)}</a>`;
+    } else {
+      html += `<span class="metadata-value">${escapeHtml(item.value)}</span>`;
+    }
+    
+    html += `</div>`;
+  });
+  
+  html += '</div>';
+  return html;
+}
+
 // 格式化日期显示（竖向2列格式）
 function formatDate(timestamp: number): string {
   const date = new Date(timestamp);
@@ -517,33 +569,31 @@ export function updateLifecycleView(markdown: string, container: HTMLElement): b
         headerTitle.textContent = stage.title;
       }
 
-      const header = stageElement.querySelector('.stage-header');
-      if (!header) {
-        return false;
-      }
-      const existingBar = header.querySelector('.stage-time-bar');
-      if (timeInfo.length > 0) {
-        const timeBarHtml = renderTimeBarHtml(timeInfo);
-        if (existingBar) {
-          existingBar.innerHTML = timeBarHtml;
-        } else {
-          const bar = document.createElement('div');
-          bar.className = 'stage-time-bar';
-          bar.innerHTML = timeBarHtml;
-          const toggleIcon = header.querySelector('.stage-toggle-icon');
-          if (toggleIcon) {
-            header.insertBefore(bar, toggleIcon);
-          } else {
-            header.appendChild(bar);
-          }
-        }
-      } else if (existingBar) {
-        existingBar.remove();
-      }
-
       const body = stageElement.querySelector<HTMLElement>('.stage-body');
       if (!body) {
         return false;
+      }
+
+      // 更新元数据区域
+      const stageCard = stageElement.querySelector('.stage-card');
+      if (stageCard) {
+        const existingMetadata = stageCard.querySelector('.stage-metadata');
+        if (stage.metadata && stage.metadata.items.length > 0) {
+          const metadataHtml = renderMetadataHtml(stage.metadata);
+          if (existingMetadata) {
+            // 更新现有元数据
+            existingMetadata.outerHTML = metadataHtml;
+          } else {
+            // 插入新元数据（在header之后）
+            const header = stageCard.querySelector('.stage-header');
+            if (header && header.nextSibling) {
+              header.insertAdjacentHTML('afterend', metadataHtml);
+            }
+          }
+        } else if (existingMetadata) {
+          // 移除元数据
+          existingMetadata.remove();
+        }
       }
 
       const summary = extractSummary(stage.content.trim());
@@ -700,16 +750,9 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
         html += `<span class="stage-header-title">${escapeHtml(stage.title)}</span>`;
         html += '</div>';
         
-        // 时间信息条（移动到标题右侧）
-        if (timeInfo.length > 0) {
-          html += '<div class="stage-time-bar">';
-          timeInfo.forEach(time => {
-            const timeLabel = time.timestamp !== null 
-              ? `<span class="time-label-name">${escapeHtml(time.label)}</span><span class="time-label-value">${escapeHtml(time.value)}</span>`
-              : `<span class="time-label-name">${escapeHtml(time.label)}</span><span class="time-label-value time-label-pending">${escapeHtml(time.value)}</span>`;
-            html += `<div class="time-item">${timeLabel}</div>`;
-          });
-          html += '</div>';
+        // 元数据区域（显示在标题右侧）
+        if (stage.metadata) {
+          html += renderMetadataHtml(stage.metadata);
         }
         
         html += '<span class="stage-toggle-icon">▼</span>';
