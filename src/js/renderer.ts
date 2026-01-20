@@ -165,9 +165,36 @@ function extractSummary(content: string, maxLength: number = 100): string {
 
 const subsectionHeadingSelector = 'h3, h4, h5, h6';
 
-function applyStageSubsections(stageBody: HTMLElement): void {
+function applyStageSubsectionsWithState(stageBody: HTMLElement, subsectionStates?: Map<string, boolean>): void {
   if (!stageBody.querySelector(subsectionHeadingSelector)) {
+    console.log('[Subsection] 没有发现子章节标题，跳过处理');
     return;
+  }
+
+  console.log('[Subsection] 开始处理子章节，传入状态数量:', subsectionStates?.size ?? 0);
+  
+  // 使用传入的状态，如果没有传入则尝试捕获当前状态
+  let expandedSubsectionTitles = new Set<string>();
+  
+  if (subsectionStates) {
+    // 使用传入的状态
+    for (const [title, isExpanded] of subsectionStates.entries()) {
+      if (isExpanded) {
+        expandedSubsectionTitles.add(title);
+        console.log('[Subsection] 使用传入状态 - 展开:', title);
+      }
+    }
+  } else {
+    // 如果没有传入状态，尝试捕获当前状态
+    const existingSubsections = stageBody.querySelectorAll('.stage-subsection.expanded');
+    existingSubsections.forEach((subsection) => {
+      const heading = subsection.querySelector(subsectionHeadingSelector);
+      if (heading) {
+        const titleText = heading.textContent?.trim() || '';
+        expandedSubsectionTitles.add(titleText);
+        console.log('[Subsection] 捕获已展开的子章节:', titleText);
+      }
+    });
   }
 
   const fragment = document.createDocumentFragment();
@@ -188,15 +215,23 @@ function applyStageSubsections(stageBody: HTMLElement): void {
           sectionStack.pop();
         }
 
+        // 检查这个子章节之前是否是展开的
+        const titleText = element.textContent?.trim() || '';
+        const wasExpanded = expandedSubsectionTitles.has(titleText);
+        
         const section = document.createElement('div');
-        section.className = 'stage-subsection collapsed';
+        section.className = wasExpanded ? 'stage-subsection expanded' : 'stage-subsection collapsed';
 
         const header = document.createElement('div');
         header.className = 'stage-subsection-header';
 
         const icon = document.createElement('span');
         icon.className = 'stage-subsection-toggle-icon';
-        icon.textContent = '▶';
+        icon.textContent = wasExpanded ? '▼' : '▶';
+
+        if (wasExpanded) {
+          console.log('[Subsection] 恢复展开状态:', titleText);
+        }
 
         header.appendChild(icon);
         header.appendChild(element);
@@ -227,11 +262,17 @@ function applyStageSubsections(stageBody: HTMLElement): void {
 
   stageBody.innerHTML = '';
   stageBody.appendChild(fragment);
+  console.log('[Subsection] 子章节处理完成');
+}
+
+// 保留旧函数签名以兼容其他调用
+function applyStageSubsections(stageBody: HTMLElement): void {
+  applyStageSubsectionsWithState(stageBody);
 }
 
 function applyLifecycleSubsections(container: HTMLElement): void {
   const bodies = container.querySelectorAll<HTMLElement>('.stage-body');
-  bodies.forEach((body) => applyStageSubsections(body));
+  bodies.forEach((body) => applyStageSubsectionsWithState(body));
 }
 
 // 语言别名映射（将常见别名映射到 highlight.js 支持的语言）
@@ -520,12 +561,30 @@ export function updateLifecycleView(markdown: string, container: HTMLElement): b
         summaryEl.remove();
       }
 
+      // 在更新内容之前，先捕获子章节的展开状态
+      console.log('[Update] 更新 stage body 内容前，捕获子章节状态');
+      const subsectionStates = new Map<string, boolean>();
+      const existingSubsections = body.querySelectorAll('.stage-subsection');
+      existingSubsections.forEach((subsection) => {
+        const heading = subsection.querySelector(subsectionHeadingSelector);
+        if (heading) {
+          const titleText = heading.textContent?.trim() || '';
+          const isExpanded = subsection.classList.contains('expanded');
+          subsectionStates.set(titleText, isExpanded);
+          if (isExpanded) {
+            console.log('[Update] 记录展开的子章节:', titleText);
+          }
+        }
+      });
+
       if (stage.content.trim()) {
         body.innerHTML = `${ensureHljsClass(marked.parse(stage.content.trim()))}`;
       } else {
         body.innerHTML = '<p class="stage-empty">暂无内容</p>';
       }
-      applyStageSubsections(body);
+      
+      // 将状态传递给 applyStageSubsections
+      applyStageSubsectionsWithState(body, subsectionStates);
     }
   }
 

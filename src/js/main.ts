@@ -19,6 +19,7 @@ let currentView: ViewType = 'lifecycle';
 
 type LifecycleViewState = {
   expandedStageKeys: Set<string>;
+  expandedSubsectionKeys: Set<string>;
   scrollTop: number;
 };
 
@@ -29,23 +30,63 @@ function getLifecycleStageKey(stage: Element): string {
   return `${nodeIndex}:${stageIndex}:${stageNum}`;
 }
 
+function getSubsectionKey(subsection: Element): string {
+  // 查找最近的 lifecycle-stage 父元素
+  const stage = subsection.closest('.lifecycle-stage');
+  if (!stage) return '';
+  
+  const stageKey = getLifecycleStageKey(stage);
+  
+  // 在该 stage 中找到这个 subsection 的索引
+  const subsections = Array.from(stage.querySelectorAll('.stage-subsection'));
+  const index = subsections.indexOf(subsection);
+  
+  return `${stageKey}:subsection-${index}`;
+}
+
 function captureLifecycleState(container: HTMLElement): LifecycleViewState {
   const expandedStageKeys = new Set<string>();
+  const expandedSubsectionKeys = new Set<string>();
+  
+  // 捕获主章节状态
   const stageElements = container.querySelectorAll('.lifecycle-stage.expanded');
+  console.log('[State Capture] 展开的主章节数量:', stageElements.length);
   stageElements.forEach((stage) => {
-    expandedStageKeys.add(getLifecycleStageKey(stage));
+    const key = getLifecycleStageKey(stage);
+    console.log('[State Capture] 捕获主章节:', key);
+    expandedStageKeys.add(key);
   });
+  
+  // 捕获子章节状态
+  const subsectionElements = container.querySelectorAll('.stage-subsection.expanded');
+  console.log('[State Capture] 展开的子章节数量:', subsectionElements.length);
+  subsectionElements.forEach((subsection) => {
+    const key = getSubsectionKey(subsection);
+    if (key) {
+      console.log('[State Capture] 捕获子章节:', key);
+      expandedSubsectionKeys.add(key);
+    }
+  });
+  
+  console.log('[State Capture] 总计 - 主章节:', expandedStageKeys.size, '子章节:', expandedSubsectionKeys.size);
+  
   return {
     expandedStageKeys,
+    expandedSubsectionKeys,
     scrollTop: container.scrollTop,
   };
 }
 
 function restoreLifecycleState(container: HTMLElement, state: LifecycleViewState): void {
+  console.log('[State Restore] 开始恢复状态 - 主章节:', state.expandedStageKeys.size, '子章节:', state.expandedSubsectionKeys.size);
+  
+  // 恢复主章节状态
   const stageElements = container.querySelectorAll('.lifecycle-stage');
+  console.log('[State Restore] 找到的主章节总数:', stageElements.length);
   stageElements.forEach((stage) => {
     const key = getLifecycleStageKey(stage);
     if (state.expandedStageKeys.has(key)) {
+      console.log('[State Restore] 恢复主章节展开状态:', key);
       stage.classList.remove('collapsed');
       stage.classList.add('expanded');
     }
@@ -54,22 +95,51 @@ function restoreLifecycleState(container: HTMLElement, state: LifecycleViewState
       icon.textContent = stage.classList.contains('collapsed') ? '▼' : '▲';
     }
   });
+  
+  // 恢复子章节状态
+  const subsectionElements = container.querySelectorAll('.stage-subsection');
+  console.log('[State Restore] 找到的子章节总数:', subsectionElements.length);
+  subsectionElements.forEach((subsection) => {
+    const key = getSubsectionKey(subsection);
+    if (key) {
+      if (state.expandedSubsectionKeys.has(key)) {
+        console.log('[State Restore] 恢复子章节展开状态:', key);
+        subsection.classList.remove('collapsed');
+        subsection.classList.add('expanded');
+        const icon = subsection.querySelector('.stage-subsection-toggle-icon');
+        if (icon) {
+          icon.textContent = '▼';
+        }
+      } else {
+        console.log('[State Restore] 子章节保持折叠:', key);
+      }
+    }
+  });
+  
+  console.log('[State Restore] 状态恢复完成');
   container.scrollTop = state.scrollTop;
 }
 
 // 渲染当前视图
 function renderCurrentView(markdown: string, container: HTMLElement): void {
+  console.log('[Render] ========== 开始渲染视图 ==========');
+  console.log('[Render] 当前视图类型:', currentView);
+  
   const initialScrollTop = container.scrollTop;
   let lifecycleState: LifecycleViewState | null = null;
 
   if (currentView === 'lifecycle') {
+    console.log('[Render] 尝试增量更新视图');
     if (updateLifecycleView(markdown, container)) {
+      console.log('[Render] 增量更新成功，跳过完整渲染');
       return;
     }
+    console.log('[Render] 增量更新失败，执行完整渲染');
     lifecycleState = captureLifecycleState(container);
   }
 
   if (currentView === 'lifecycle') {
+    console.log('[Render] 执行完整的生命周期视图渲染');
     renderLifecycleView(markdown, container);
   } else if (currentView === 'exploitability') {
     renderExploitabilityView(markdown, container);
@@ -80,10 +150,14 @@ function renderCurrentView(markdown: string, container: HTMLElement): void {
   }
 
   if (currentView === 'lifecycle' && lifecycleState) {
+    console.log('[Render] 恢复生命周期视图状态');
     restoreLifecycleState(container, lifecycleState);
   } else {
+    console.log('[Render] 恢复滚动位置');
     container.scrollTop = initialScrollTop;
   }
+  
+  console.log('[Render] ========== 渲染完成 ==========');
 }
 
 // 初始化应用
@@ -241,18 +315,6 @@ function initStageToggle(previewContent: HTMLElement): void {
     const icon = header.querySelector('.stage-toggle-icon');
     if (icon) {
       icon.textContent = stage.classList.contains('collapsed') ? '▼' : '▲';
-    }
-
-    if (stage.classList.contains('expanded')) {
-      const subsections = stage.querySelectorAll('.stage-subsection');
-      subsections.forEach((section) => {
-        section.classList.remove('expanded');
-        section.classList.add('collapsed');
-        const subIcon = section.querySelector('.stage-subsection-toggle-icon');
-        if (subIcon) {
-          subIcon.textContent = '▶';
-        }
-      });
     }
   });
 }
