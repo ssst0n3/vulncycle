@@ -132,8 +132,32 @@ function getPrimaryTimestamp(stage: LifecycleStage): number | null {
 function extractSummary(content: string, maxLength: number = 100): string {
   if (!content.trim()) return '';
   
+  // 先按行处理，过滤掉元数据列表项和注释
+  const lines = content.split('\n');
+  const filteredLines: string[] = [];
+  
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+    
+    // 跳过 HTML 注释行
+    if (trimmedLine.match(/^<!--[\s\S]*?-->$/) || trimmedLine.match(/^&lt;!--[\s\S]*?--&gt;$/)) {
+      continue;
+    }
+    
+    // 跳过元数据列表项格式：- **字段名**：值 或 - **字段名**: 值
+    if (trimmedLine.match(/^-\s*\*\*[^*]+\*\*[：:]\s*.+$/)) {
+      continue;
+    }
+    
+    filteredLines.push(line);
+  }
+  
+  const filteredContent = filteredLines.join('\n');
+  
   // 移除 markdown 语法标记，只保留文本
-  const text = content
+  const text = filteredContent
+    .replace(/<!--[\s\S]*?-->/g, '') // 移除 HTML 注释（Markdown 注释格式）
+    .replace(/&lt;!--[\s\S]*?--&gt;/g, '') // 移除转义的 HTML 注释
     .replace(/^#{1,6}\s+/gm, '') // 移除标题标记
     .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1') // 移除链接，保留文本
     .replace(/`([^`]+)`/g, '$1') // 移除行内代码标记
@@ -144,13 +168,13 @@ function extractSummary(content: string, maxLength: number = 100): string {
     .trim();
   
   // 提取第一段或前几行
-  const lines = text.split('\n').filter(line => line.trim());
-  if (lines.length === 0) return '';
+  const textLines = text.split('\n').filter(line => line.trim());
+  if (textLines.length === 0) return '';
   
-  let summary = lines[0];
-  for (let i = 1; i < Math.min(lines.length, 3); i++) {
-    if ((summary + ' ' + lines[i]).length <= maxLength) {
-      summary += ' ' + lines[i];
+  let summary = textLines[0];
+  for (let i = 1; i < Math.min(textLines.length, 3); i++) {
+    if ((summary + ' ' + textLines[i]).length <= maxLength) {
+      summary += ' ' + textLines[i];
     } else {
       break;
     }
@@ -385,36 +409,17 @@ function renderMetadataHtml(metadata: StageMetadata | undefined, maxItems: numbe
   console.group('📊 [Renderer] 开始渲染元数据');
   console.log(`原始元数据项数量: ${metadata.items.length}`);
   
-  // 定义类型优先级：时间 > 版本 > 人员 > 链接 > 文本
-  const typePriority: Record<MetadataItem['type'], number> = {
-    'time': 1,
-    'version': 2,
-    'person': 3,
-    'link': 4,
-    'text': 5,
-  };
+  // 保持原始输入顺序，不进行排序
+  // 按照模板中的顺序显示：合入时间、提交时间、修复版本、修复者...
+  const displayItems = metadata.items.slice(0, maxItems);
   
-  console.log('类型优先级:', typePriority);
-  
-  // 按优先级排序元数据项
-  const sortedItems = [...metadata.items].sort((a, b) => {
-    const priorityDiff = typePriority[a.type] - typePriority[b.type];
-    if (priorityDiff !== 0) return priorityDiff;
-    // 同类型按原始顺序
-    return 0;
-  });
-  
-  console.log('排序后的元数据项:');
-  console.table(sortedItems.map((item, idx) => ({
-    '排序位置': idx,
+  console.log('保持原始顺序的元数据项:');
+  console.table(displayItems.map((item, idx) => ({
+    '顺序位置': idx + 1,
     '类型': item.type,
-    '优先级': typePriority[item.type],
     '标签': item.label,
     '值': item.value.length > 25 ? item.value.substring(0, 25) + '...' : item.value
   })));
-  
-  // 只取前 maxItems 个
-  const displayItems = sortedItems.slice(0, maxItems);
   
   console.log(`实际显示的元数据项数量: ${displayItems.length} (最多${maxItems}个)`);
   console.log('⚠️ 布局策略: 使用 flex-direction: row-reverse 反向排列，增加容器宽度到90%');
