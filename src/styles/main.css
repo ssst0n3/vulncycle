@@ -3161,3 +3161,50 @@ pre {
 .completion-detail-value.incomplete {
   color: #f5576c;
 }
+
+/* 子章节列表样式 */
+.completion-subsections {
+  margin-top: var(--spacing-xs);
+  margin-left: calc(60px + var(--spacing-xs));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--spacing-xs);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.completion-subsection {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85em;
+  transition: background-color var(--transition-fast);
+}
+
+.completion-subsection:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.completion-subsection.complete {
+  color: #43e97b;
+}
+
+.completion-subsection.incomplete {
+  color: #f5576c;
+}
+
+.completion-subsection-icon {
+  font-weight: bold;
+  min-width: 16px;
+  text-align: center;
+}
+
+.completion-subsection-title {
+  flex: 1;
+  color: var(--text-secondary);
+}

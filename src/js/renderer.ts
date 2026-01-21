@@ -1114,6 +1114,72 @@ export function renderAnalysisView(markdown: string, container: HTMLElement): vo
   container.innerHTML = html;
 }
 
+// 子章节接口
+interface Subsection {
+  title: string;
+  level: number; // 标题级别 (3-6)
+  content: string;
+  isComplete: boolean; // 是否完成（不包含TODO）
+}
+
+// 解析章节的子章节
+function parseSubsections(content: string): Subsection[] {
+  const subsections: Subsection[] = [];
+  const lines = content.split('\n');
+  
+  let currentSubsection: { title: string; level: number; contentLines: string[] } | null = null;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    
+    // 检测子章节标题（h3-h6）
+    const headingMatch = line.match(/^(#{3,6})\s+(.+)$/);
+    if (headingMatch) {
+      // 保存前一个子章节
+      if (currentSubsection) {
+        const subsectionContent = currentSubsection.contentLines.join('\n').trim();
+        // 检查是否包含TODO（不区分大小写）
+        const hasTodo = /TODO|todo|待办|待完成|待处理|待修改|待填写/i.test(subsectionContent);
+        subsections.push({
+          title: currentSubsection.title,
+          level: currentSubsection.level,
+          content: subsectionContent,
+          isComplete: !hasTodo,
+        });
+      }
+      
+      // 开始新子章节
+      const level = headingMatch[1].length;
+      const title = headingMatch[2].trim();
+      currentSubsection = {
+        title,
+        level,
+        contentLines: [],
+      };
+      continue;
+    }
+    
+    // 收集内容
+    if (currentSubsection) {
+      currentSubsection.contentLines.push(line);
+    }
+  }
+  
+  // 保存最后一个子章节
+  if (currentSubsection) {
+    const subsectionContent = currentSubsection.contentLines.join('\n').trim();
+    const hasTodo = /TODO|todo|待办|待完成|待处理|待修改|待填写/i.test(subsectionContent);
+    subsections.push({
+      title: currentSubsection.title,
+      level: currentSubsection.level,
+      content: subsectionContent,
+      isComplete: !hasTodo,
+    });
+  }
+  
+  return subsections;
+}
+
 // 计算阶段的完成度
 interface StageCompletion {
   stageNum: number;
@@ -1122,8 +1188,10 @@ interface StageCompletion {
   hasContent: boolean;
   hasMetadata: boolean;
   metadataComplete: boolean;
+  subsections: Subsection[]; // 子章节列表
   details: {
-    contentScore: number;
+    totalSubsections: number;
+    completedSubsections: number;
     metadataScore: number;
   };
 }
@@ -1132,38 +1200,34 @@ function calculateStageCompletion(stage: LifecycleStage): StageCompletion {
   const content = stage.content.trim();
   const hasContent = content.length > 0 && content !== '暂无内容';
   
-  // 检查内容是否只是占位符
-  const placeholderPatterns = [
-    /\[详细描述[^\]]*\]/,
-    /\[.*\]/,
-    /待修改/,
-    /待填写/,
-    /需要修改/,
-    /TBD/,
-    /N\/A/,
-  ];
-  const hasRealContent = hasContent && !placeholderPatterns.some(pattern => pattern.test(content));
+  // 解析子章节
+  const subsections = parseSubsections(content);
   
-  // 内容完成度（0-50分）
-  let contentScore = 0;
-  if (hasRealContent) {
-    // 基础分：有内容
-    contentScore += 20;
-    // 检查是否有子章节（h3-h6）
-    const hasSubsections = /^#{3,}\s+/m.test(content);
-    if (hasSubsections) {
-      contentScore += 15;
+  // 如果没有子章节，检查整个内容是否包含TODO
+  let completion = 0;
+  let totalSubsections = 0;
+  let completedSubsections = 0;
+  
+  if (subsections.length > 0) {
+    // 有子章节：根据子章节完成度计算
+    totalSubsections = subsections.length;
+    completedSubsections = subsections.filter(s => s.isComplete).length;
+    completion = totalSubsections > 0 
+      ? Math.round((completedSubsections / totalSubsections) * 100)
+      : 0;
+  } else {
+    // 没有子章节：检查整个内容是否包含TODO
+    if (hasContent) {
+      const hasTodo = /TODO|todo|待办|待完成|待处理|待修改|待填写/i.test(content);
+      completion = hasTodo ? 0 : 100;
+    } else {
+      completion = 0;
     }
-    // 检查内容长度（粗略估计）
-    const contentLength = content.replace(/^#{1,6}\s+/gm, '').replace(/^-\s*\*\*[^*]+\*\*[：:]\s*/gm, '').trim().length;
-    if (contentLength > 200) {
-      contentScore += 15;
-    } else if (contentLength > 50) {
-      contentScore += 10;
-    }
+    totalSubsections = 0;
+    completedSubsections = 0;
   }
   
-  // 元数据完成度（0-50分）
+  // 元数据完成度（作为额外加分，最多20分）
   let metadataScore = 0;
   let hasMetadata = false;
   let metadataComplete = false;
@@ -1183,21 +1247,25 @@ function calculateStageCompletion(stage: LifecycleStage): StageCompletion {
              !/^2000-01-01/.test(value); // 排除占位符日期
     }).length;
     
-    metadataScore = Math.round((completeItems / Math.max(totalItems, 1)) * 50);
+    // 元数据完成度转换为0-20分
+    metadataScore = Math.round((completeItems / Math.max(totalItems, 1)) * 20);
     metadataComplete = completeItems === totalItems;
   }
   
-  const completion = Math.min(100, contentScore + metadataScore);
+  // 最终完成度：子章节完成度 + 元数据加分（但不超过100%）
+  const finalCompletion = Math.min(100, completion + metadataScore);
   
   return {
     stageNum: stage.stageNum ?? 0,
     title: stage.title,
-    completion,
-    hasContent: hasRealContent,
+    completion: finalCompletion,
+    hasContent,
     hasMetadata,
     metadataComplete,
+    subsections,
     details: {
-      contentScore,
+      totalSubsections,
+      completedSubsections,
       metadataScore,
     },
   };
@@ -1251,8 +1319,10 @@ export function renderCompletionView(markdown: string, container: HTMLElement): 
         hasContent: false,
         hasMetadata: false,
         metadataComplete: false,
+        subsections: [],
         details: {
-          contentScore: 0,
+          totalSubsections: 0,
+          completedSubsections: 0,
           metadataScore: 0,
         },
       });
@@ -1300,21 +1370,48 @@ export function renderCompletionView(markdown: string, container: HTMLElement): 
     html += '</div>';
     
     html += '<div class="completion-stage-details">';
-    html += '<div class="completion-stage-detail-item">';
-    html += `<span class="completion-detail-label">内容：</span>`;
-    html += `<span class="completion-detail-value ${completion.hasContent ? 'complete' : 'incomplete'}">`;
-    html += completion.hasContent ? '✓ 已填写' : '✗ 未填写';
-    html += ` (${completion.details.contentScore}/50)</span>`;
-    html += '</div>';
     
+    // 显示子章节完成情况
+    if (completion.details.totalSubsections > 0) {
+      html += '<div class="completion-stage-detail-item">';
+      html += `<span class="completion-detail-label">子章节：</span>`;
+      html += `<span class="completion-detail-value">`;
+      html += `${completion.details.completedSubsections} / ${completion.details.totalSubsections} 已完成`;
+      html += '</span>';
+      html += '</div>';
+      
+      // 显示子章节列表
+      if (completion.subsections.length > 0) {
+        html += '<div class="completion-subsections">';
+        completion.subsections.forEach((subsection, idx) => {
+          const subsectionClass = subsection.isComplete ? 'complete' : 'incomplete';
+          const subsectionIcon = subsection.isComplete ? '✓' : '✗';
+          html += `<div class="completion-subsection ${subsectionClass}">`;
+          html += `<span class="completion-subsection-icon">${subsectionIcon}</span>`;
+          html += `<span class="completion-subsection-title">${escapeHtml(subsection.title)}</span>`;
+          html += '</div>';
+        });
+        html += '</div>';
+      }
+    } else {
+      // 没有子章节时显示内容状态
+      html += '<div class="completion-stage-detail-item">';
+      html += `<span class="completion-detail-label">内容：</span>`;
+      html += `<span class="completion-detail-value ${completion.hasContent ? 'complete' : 'incomplete'}">`;
+      html += completion.hasContent ? '✓ 已填写' : '✗ 未填写';
+      html += '</span>';
+      html += '</div>';
+    }
+    
+    // 显示元数据完成情况
     html += '<div class="completion-stage-detail-item">';
     html += `<span class="completion-detail-label">元数据：</span>`;
     if (completion.hasMetadata) {
       html += `<span class="completion-detail-value ${completion.metadataComplete ? 'complete' : 'partial'}">`;
       html += completion.metadataComplete ? '✓ 完整' : '⚠ 部分填写';
-      html += ` (${completion.details.metadataScore}/50)</span>`;
+      html += ` (+${completion.details.metadataScore}%)</span>`;
     } else {
-      html += '<span class="completion-detail-value incomplete">✗ 未填写 (0/50)</span>';
+      html += '<span class="completion-detail-value incomplete">✗ 未填写</span>';
     }
     html += '</div>';
     html += '</div>';
