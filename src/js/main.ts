@@ -6,13 +6,14 @@ import {
   renderExploitabilityView,
   renderIntelligenceView,
   renderAnalysisView,
+  renderCompletionView,
   updateLifecycleView,
 } from './renderer.js';
 import { storageManager, type HistoryEntry, type SaveStatus } from './storage.js';
 import type { EditorView } from '@codemirror/view';
 
 // 视图类型
-type ViewType = 'lifecycle' | 'exploitability' | 'intelligence' | 'analysis';
+type ViewType = 'lifecycle' | 'exploitability' | 'intelligence' | 'analysis' | 'completion';
 
 // 当前视图类型
 let currentView: ViewType = 'lifecycle';
@@ -184,8 +185,10 @@ function renderCurrentView(markdown: string, container: HTMLElement): void {
     renderExploitabilityView(markdown, container);
   } else if (currentView === 'intelligence') {
     renderIntelligenceView(markdown, container);
-  } else {
+  } else if (currentView === 'analysis') {
     renderAnalysisView(markdown, container);
+  } else {
+    renderCompletionView(markdown, container);
   }
 
   if (currentView === 'lifecycle' && lifecycleState) {
@@ -260,8 +263,9 @@ function initViewSwitcher(editor: EditorView, previewContent: HTMLElement): void
   const exploitabilityBtn = document.getElementById('exploitability-view-btn');
   const intelligenceBtn = document.getElementById('intelligence-view-btn');
   const analysisBtn = document.getElementById('analysis-view-btn');
+  const completionBtn = document.getElementById('completion-view-btn');
 
-  if (!lifecycleBtn || !exploitabilityBtn || !intelligenceBtn || !analysisBtn) {
+  if (!lifecycleBtn || !exploitabilityBtn || !intelligenceBtn || !analysisBtn || !completionBtn) {
     console.error('View switcher buttons not found');
     return;
   }
@@ -274,6 +278,7 @@ function initViewSwitcher(editor: EditorView, previewContent: HTMLElement): void
     exploitabilityBtn.classList.toggle('active', viewType === 'exploitability');
     intelligenceBtn.classList.toggle('active', viewType === 'intelligence');
     analysisBtn.classList.toggle('active', viewType === 'analysis');
+    completionBtn.classList.toggle('active', viewType === 'completion');
 
     // 更新时间轴控制按钮的可见性
     updateTimelineToggleVisibility();
@@ -290,6 +295,7 @@ function initViewSwitcher(editor: EditorView, previewContent: HTMLElement): void
   exploitabilityBtn.addEventListener('click', () => switchView('exploitability'));
   intelligenceBtn.addEventListener('click', () => switchView('intelligence'));
   analysisBtn.addEventListener('click', () => switchView('analysis'));
+  completionBtn.addEventListener('click', () => switchView('completion'));
 }
 
 // 加载模板

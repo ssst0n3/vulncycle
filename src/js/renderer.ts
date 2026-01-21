@@ -1078,3 +1078,217 @@ export function renderAnalysisView(markdown: string, container: HTMLElement): vo
   container.innerHTML = html;
 }
 
+// 计算阶段的完成度
+interface StageCompletion {
+  stageNum: number;
+  title: string;
+  completion: number; // 0-100
+  hasContent: boolean;
+  hasMetadata: boolean;
+  metadataComplete: boolean;
+  details: {
+    contentScore: number;
+    metadataScore: number;
+  };
+}
+
+function calculateStageCompletion(stage: LifecycleStage): StageCompletion {
+  const content = stage.content.trim();
+  const hasContent = content.length > 0 && content !== '暂无内容';
+  
+  // 检查内容是否只是占位符
+  const placeholderPatterns = [
+    /\[详细描述[^\]]*\]/,
+    /\[.*\]/,
+    /待修改/,
+    /待填写/,
+    /需要修改/,
+    /TBD/,
+    /N\/A/,
+  ];
+  const hasRealContent = hasContent && !placeholderPatterns.some(pattern => pattern.test(content));
+  
+  // 内容完成度（0-50分）
+  let contentScore = 0;
+  if (hasRealContent) {
+    // 基础分：有内容
+    contentScore += 20;
+    // 检查是否有子章节（h3-h6）
+    const hasSubsections = /^#{3,}\s+/m.test(content);
+    if (hasSubsections) {
+      contentScore += 15;
+    }
+    // 检查内容长度（粗略估计）
+    const contentLength = content.replace(/^#{1,6}\s+/gm, '').replace(/^-\s*\*\*[^*]+\*\*[：:]\s*/gm, '').trim().length;
+    if (contentLength > 200) {
+      contentScore += 15;
+    } else if (contentLength > 50) {
+      contentScore += 10;
+    }
+  }
+  
+  // 元数据完成度（0-50分）
+  let metadataScore = 0;
+  let hasMetadata = false;
+  let metadataComplete = false;
+  
+  if (stage.metadata && stage.metadata.items.length > 0) {
+    hasMetadata = true;
+    const totalItems = stage.metadata.items.length;
+    const completeItems = stage.metadata.items.filter(item => {
+      const value = item.value.trim();
+      return value && 
+             !value.includes('需要修改') && 
+             !value.includes('待填写') && 
+             !value.includes('TBD') &&
+             !value.includes('N/A') &&
+             value !== '...' &&
+             !/^vX\.X\.X$/i.test(value) && // 排除占位符版本号
+             !/^2000-01-01/.test(value); // 排除占位符日期
+    }).length;
+    
+    metadataScore = Math.round((completeItems / Math.max(totalItems, 1)) * 50);
+    metadataComplete = completeItems === totalItems;
+  }
+  
+  const completion = Math.min(100, contentScore + metadataScore);
+  
+  return {
+    stageNum: stage.stageNum ?? 0,
+    title: stage.title,
+    completion,
+    hasContent: hasRealContent,
+    hasMetadata,
+    metadataComplete,
+    details: {
+      contentScore,
+      metadataScore,
+    },
+  };
+}
+
+// 渲染完成度视图
+export function renderCompletionView(markdown: string, container: HTMLElement): void {
+  if (!markdown.trim()) {
+    container.innerHTML =
+      '<div class="completion-container"><p style="text-align: center; color: #999; padding: 40px;">请在左侧输入 Markdown 内容...</p></div>';
+    return;
+  }
+
+  const docTitle = extractTitle(markdown);
+  const stages = parseLifecycleStages(markdown);
+  
+  // 计算所有阶段的完成度
+  const completions: StageCompletion[] = [];
+  
+  stages.forEach(stage => {
+    if (stage.stageNum !== null) {
+      completions.push(calculateStageCompletion(stage));
+    }
+  });
+  
+  // 确保所有9个阶段都有数据（即使不存在也显示为0%）
+  const STAGE_KEYWORDS: Record<string, number> = {
+    基本信息: 1,
+    漏洞引入: 2,
+    漏洞发现: 3,
+    漏洞上报: 4,
+    漏洞修复: 5,
+    漏洞公告: 6,
+    漏洞情报: 7,
+    漏洞利用: 8,
+    防护: 9,
+  };
+  
+  const allStages: StageCompletion[] = [];
+  for (let i = 1; i <= 9; i++) {
+    const existing = completions.find(c => c.stageNum === i);
+    if (existing) {
+      allStages.push(existing);
+    } else {
+      // 从配置中获取阶段名称
+      const stageTitle = Object.keys(STAGE_KEYWORDS).find(key => STAGE_KEYWORDS[key] === i) || `阶段 ${i}`;
+      allStages.push({
+        stageNum: i,
+        title: stageTitle,
+        completion: 0,
+        hasContent: false,
+        hasMetadata: false,
+        metadataComplete: false,
+        details: {
+          contentScore: 0,
+          metadataScore: 0,
+        },
+      });
+    }
+  }
+  
+  // 计算总体完成度
+  const totalCompletion = Math.round(
+    allStages.reduce((sum, stage) => sum + stage.completion, 0) / allStages.length
+  );
+  
+  let html = '<div class="completion-container">';
+  html += `<h1 class="completion-title">${escapeHtml(docTitle)}</h1>`;
+  
+  // 总体完成度卡片
+  html += '<div class="completion-overview">';
+  html += '<div class="completion-overview-card">';
+  html += '<div class="completion-overview-header">';
+  html += '<h2>总体完成度</h2>';
+  html += `<div class="completion-overview-percentage">${totalCompletion}%</div>`;
+  html += '</div>';
+  html += '<div class="completion-overview-progress">';
+  html += `<div class="completion-overview-progress-bar" style="width: ${totalCompletion}%"></div>`;
+  html += '</div>';
+  html += `<div class="completion-overview-stats">已完成 ${allStages.filter(s => s.completion >= 80).length} / ${allStages.length} 个阶段</div>`;
+  html += '</div>';
+  html += '</div>';
+  
+  // 各阶段完成度列表
+  html += '<div class="completion-stages">';
+  
+  allStages.forEach((completion) => {
+    const stageGradient = `var(--gradient-stage-${completion.stageNum})`;
+    const completionClass = completion.completion >= 80 ? 'high' : completion.completion >= 50 ? 'medium' : 'low';
+    
+    html += `<div class="completion-stage" data-stage="${completion.stageNum}">`;
+    html += '<div class="completion-stage-header">';
+    html += `<div class="completion-stage-number" data-stage="${completion.stageNum}">${completion.stageNum}</div>`;
+    html += `<h3 class="completion-stage-title">${escapeHtml(completion.title)}</h3>`;
+    html += `<div class="completion-stage-percentage ${completionClass}">${completion.completion}%</div>`;
+    html += '</div>';
+    
+    html += '<div class="completion-stage-progress">';
+    html += `<div class="completion-stage-progress-bar" style="width: ${completion.completion}%; background: ${stageGradient}"></div>`;
+    html += '</div>';
+    
+    html += '<div class="completion-stage-details">';
+    html += '<div class="completion-stage-detail-item">';
+    html += `<span class="completion-detail-label">内容：</span>`;
+    html += `<span class="completion-detail-value ${completion.hasContent ? 'complete' : 'incomplete'}">`;
+    html += completion.hasContent ? '✓ 已填写' : '✗ 未填写';
+    html += ` (${completion.details.contentScore}/50)</span>`;
+    html += '</div>';
+    
+    html += '<div class="completion-stage-detail-item">';
+    html += `<span class="completion-detail-label">元数据：</span>`;
+    if (completion.hasMetadata) {
+      html += `<span class="completion-detail-value ${completion.metadataComplete ? 'complete' : 'partial'}">`;
+      html += completion.metadataComplete ? '✓ 完整' : '⚠ 部分填写';
+      html += ` (${completion.details.metadataScore}/50)</span>`;
+    } else {
+      html += '<span class="completion-detail-value incomplete">✗ 未填写 (0/50)</span>';
+    }
+    html += '</div>';
+    html += '</div>';
+    
+    html += '</div>';
+  });
+  
+  html += '</div>';
+  html += '</div>';
+  
+  container.innerHTML = html;
+}
+
