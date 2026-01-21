@@ -1210,29 +1210,121 @@ function calculateStageCompletion(stage: LifecycleStage): StageCompletion {
     completedSubsections = 0;
   }
   
+  // 检查值是否为占位符
+  function isPlaceholderValue(value: string): boolean {
+    const trimmed = value.trim();
+    if (!trimmed) return true;
+    
+    // 检查常见的占位符关键词
+    if (trimmed.includes('需要修改') || 
+        trimmed.includes('待填写') || 
+        trimmed.includes('待完成') ||
+        trimmed.includes('待处理') ||
+        trimmed.includes('TBD') ||
+        trimmed.includes('N/A') ||
+        trimmed === '...') {
+      return true;
+    }
+    
+    // 检查中文占位符文本
+    const chinesePlaceholders = [
+      '研究者名称', '研究机构/公司', '开发者名称',
+      '研究者', '机构', '公司', '开发者'
+    ];
+    if (chinesePlaceholders.some(placeholder => trimmed === placeholder || trimmed.includes(placeholder))) {
+      return true;
+    }
+    
+    // 检查日期占位符：YYYY-MM-DD 格式或默认占位符日期
+    if (/^YYYY-MM-DD$/i.test(trimmed) || 
+        (trimmed.match(/^\d{4}-\d{2}-\d{2}$/) && trimmed.startsWith('2000-01-01'))) {
+      return true;
+    }
+    
+    // 检查版本占位符：vX.Y.Z, vX.X.X, vX.Y.Z 等格式（包含 X, Y, Z 字母的版本号）
+    if (/^v[XxYyZz]\.([XxYyZz]|\d+)\.([XxYyZz]|\d+)$/i.test(trimmed)) {
+      return true;
+    }
+    
+    // 检查编号占位符：SA-XXXX, CVE-XXXX 等格式
+    if (/^(SA|CVE|CWE)-[Xx]{2,}$/i.test(trimmed)) {
+      return true;
+    }
+    
+    // 检查示例域名
+    if (trimmed.includes('example.com') || trimmed.includes('example.org')) {
+      return true;
+    }
+    
+    // 检查常见的占位符 commit hash（如 def5678, abc1234 等简单模式）
+    if (/^[a-f0-9]{6,8}$/i.test(trimmed) && 
+        (trimmed.toLowerCase().startsWith('def') || 
+         trimmed.toLowerCase().startsWith('abc') ||
+         trimmed.toLowerCase() === 'commit_sha')) {
+      return true;
+    }
+    
+    // 检查 Markdown 链接中的占位符文本
+    const linkMatch = trimmed.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if (linkMatch) {
+      const linkText = linkMatch[1].trim();
+      const linkUrl = linkMatch[2].trim();
+      
+      // 检查链接文本是否为占位符
+      const placeholderTexts = [
+        'username', 'XXX', 'commit_sha', 'commit', 'sha',
+        '研究者名称', '开发者名称', '研究机构/公司',
+        '研究者', '机构', '公司', '开发者',
+        'vX.X.X', 'vX.Y.Z', 'SA-XXXX', 'def5678', 'abc1234'
+      ];
+      
+      // 检查链接文本是否匹配占位符（支持 @username, #XXX 等格式）
+      const normalizedLinkText = linkText.toLowerCase();
+      if (placeholderTexts.some(placeholder => {
+          const normalizedPlaceholder = placeholder.toLowerCase();
+          return normalizedLinkText === normalizedPlaceholder ||
+                 normalizedLinkText === '@' + normalizedPlaceholder ||
+                 normalizedLinkText === '#' + normalizedPlaceholder ||
+                 normalizedLinkText.includes(normalizedPlaceholder);
+        })) {
+        return true;
+      }
+      
+      // 检查链接 URL 是否包含占位符路径或示例域名
+      const normalizedUrl = linkUrl.toLowerCase();
+      if (normalizedUrl.includes('/username') || 
+          normalizedUrl.includes('/xxx') || 
+          normalizedUrl.includes('/commit_sha') ||
+          normalizedUrl.includes('/commit/commit') ||
+          normalizedUrl.includes('/pull/xxx') ||
+          normalizedUrl.includes('/org/repo') ||
+          normalizedUrl.includes('example.com') ||
+          normalizedUrl.includes('example.org')) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+  
   // 元数据完成度（作为额外加分，最多20分）
   let metadataScore = 0;
   let hasMetadata = false;
   let metadataComplete = false;
+  let completeMetadataItems = 0;
   
   if (stage.metadata && stage.metadata.items.length > 0) {
-    hasMetadata = true;
     const totalItems = stage.metadata.items.length;
-    const completeItems = stage.metadata.items.filter(item => {
-      const value = item.value.trim();
-      return value && 
-             !value.includes('需要修改') && 
-             !value.includes('待填写') && 
-             !value.includes('TBD') &&
-             !value.includes('N/A') &&
-             value !== '...' &&
-             !/^vX\.X\.X$/i.test(value) && // 排除占位符版本号
-             !/^2000-01-01/.test(value); // 排除占位符日期
+    completeMetadataItems = stage.metadata.items.filter(item => {
+      return !isPlaceholderValue(item.value);
     }).length;
     
+    // 只有当存在有效（非占位符）元数据项时，才认为有元数据
+    hasMetadata = completeMetadataItems > 0;
+    
     // 元数据完成度转换为0-20分
-    metadataScore = Math.round((completeItems / Math.max(totalItems, 1)) * 20);
-    metadataComplete = completeItems === totalItems;
+    metadataScore = Math.round((completeMetadataItems / Math.max(totalItems, 1)) * 20);
+    metadataComplete = completeMetadataItems === totalItems && totalItems > 0;
   }
   
   // 最终完成度：子章节完成度 + 元数据加分（但不超过100%）
