@@ -323,6 +323,58 @@ function parseMarkdownLink(value: string): { text: string; url: string } | null 
   return null;
 }
 
+// 解析并渲染包含 Markdown 链接的混合文本
+// 例如: "Michael Crosby([@crosbymichael](https://github.com/crosbymichael))"
+function renderValueWithMarkdownLinks(value: string): string {
+  // 先检查是否是完整的 Markdown 链接格式
+  const fullLink = parseMarkdownLink(value);
+  if (fullLink) {
+    return `<a class="metadata-value metadata-link" href="${escapeHtml(fullLink.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(fullLink.text)}</a>`;
+  }
+  
+  // 检查是否包含 Markdown 链接模式 [text](url)
+  const linkPattern = /\[([^\]]+)\]\(([^)]+)\)/g;
+  const matches = Array.from(value.matchAll(linkPattern));
+  
+  if (matches.length === 0) {
+    // 没有链接，直接转义返回
+    if (value.startsWith('http') || value.includes('://')) {
+      return `<a class="metadata-value metadata-link" href="${escapeHtml(value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(value)}</a>`;
+    }
+    return `<span class="metadata-value">${escapeHtml(value)}</span>`;
+  }
+  
+  // 有链接，需要混合渲染
+  let result = '';
+  let lastIndex = 0;
+  
+  matches.forEach((match) => {
+    const matchIndex = match.index!;
+    const matchLength = match[0].length;
+    
+    // 添加链接前的普通文本
+    if (matchIndex > lastIndex) {
+      const textBefore = value.substring(lastIndex, matchIndex);
+      result += escapeHtml(textBefore);
+    }
+    
+    // 添加链接
+    const linkText = match[1];
+    const linkUrl = match[2];
+    result += `<a class="metadata-value metadata-link" href="${escapeHtml(linkUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)}</a>`;
+    
+    lastIndex = matchIndex + matchLength;
+  });
+  
+  // 添加剩余的普通文本
+  if (lastIndex < value.length) {
+    const textAfter = value.substring(lastIndex);
+    result += escapeHtml(textAfter);
+  }
+  
+  return `<span class="metadata-value">${result}</span>`;
+}
+
 // 渲染元数据HTML（仅渲染前几个关键元数据，单行显示）
 function renderMetadataHtml(metadata: StageMetadata | undefined, maxItems: number = 5): string {
   if (!metadata || metadata.items.length === 0) {
@@ -401,20 +453,8 @@ function renderMetadataHtml(metadata: StageMetadata | undefined, maxItems: numbe
     
     html += `<span class="metadata-label">${escapeHtml(item.label)}</span>`;
     
-    // 渲染值（所有类型都检查是否包含链接）
-    // 尝试解析 Markdown 链接格式 [text](url)
-    const mdLink = parseMarkdownLink(item.value);
-    if (mdLink) {
-      html += `<a class="metadata-value metadata-link" href="${escapeHtml(mdLink.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(mdLink.text)}</a>`;
-    }
-    // 直接 URL 格式
-    else if (item.value.startsWith('http') || item.value.includes('://')) {
-      html += `<a class="metadata-value metadata-link" href="${escapeHtml(item.value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.value)}</a>`;
-    }
-    // 普通文本
-    else {
-      html += `<span class="metadata-value">${escapeHtml(item.value)}</span>`;
-    }
+    // 渲染值（支持混合格式的 Markdown 链接）
+    html += renderValueWithMarkdownLinks(item.value);
     
     html += `</div>`;
   });
