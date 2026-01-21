@@ -401,22 +401,18 @@ function renderMetadataHtml(metadata: StageMetadata | undefined, maxItems: numbe
     
     html += `<span class="metadata-label">${escapeHtml(item.label)}</span>`;
     
-    // 渲染链接
-    if (item.type === 'link') {
-      // 尝试解析 Markdown 链接格式 [text](url)
-      const mdLink = parseMarkdownLink(item.value);
-      if (mdLink) {
-        html += `<a class="metadata-value metadata-link" href="${escapeHtml(mdLink.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(mdLink.text)}</a>`;
-      }
-      // 直接 URL 格式
-      else if (item.value.startsWith('http') || item.value.includes('://')) {
-        html += `<a class="metadata-value metadata-link" href="${escapeHtml(item.value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.value)}</a>`;
-      }
-      // 普通文本
-      else {
-        html += `<span class="metadata-value">${escapeHtml(item.value)}</span>`;
-      }
-    } else {
+    // 渲染值（所有类型都检查是否包含链接）
+    // 尝试解析 Markdown 链接格式 [text](url)
+    const mdLink = parseMarkdownLink(item.value);
+    if (mdLink) {
+      html += `<a class="metadata-value metadata-link" href="${escapeHtml(mdLink.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(mdLink.text)}</a>`;
+    }
+    // 直接 URL 格式
+    else if (item.value.startsWith('http') || item.value.includes('://')) {
+      html += `<a class="metadata-value metadata-link" href="${escapeHtml(item.value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.value)}</a>`;
+    }
+    // 普通文本
+    else {
       html += `<span class="metadata-value">${escapeHtml(item.value)}</span>`;
     }
     
@@ -1167,7 +1163,7 @@ function calculateStageCompletion(stage: LifecycleStage): StageCompletion {
   };
 }
 
-// 渲染完成度视图
+// 渲染完成度
 export function renderCompletionView(markdown: string, container: HTMLElement): void {
   if (!markdown.trim()) {
     container.innerHTML =
