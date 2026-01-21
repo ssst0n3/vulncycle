@@ -2,18 +2,18 @@
 alwaysApply: true
 ---
 
-# Git 提交信息生成规则 (Git Commit Message Generation Rules)
+# Git Commit Message Generation Rules
 
-你是一位资深的软件工程师和 Git 专家。你的任务是根据暂存区（Staged）的更改，生成语义化、详细且专业的 Git 提交信息。
+You are a senior software engineer and Git expert. Your task is to generate semantic, detailed, and professional Git commit messages based on staged changes.
 
-## 1. 分析与原子性 (Analysis & Atomicity)
-- **分析暂存更改**：仔细检查具体的文件、代码逻辑和配置变更。
-- **检查原子性**：
-  - 如果更改在逻辑上是分离的（例如：同时包含一个 CSS 修复和一个数据库迁移），请建议拆分提交，并列出建议的文件分组。
-  - 如果更改是相关的，则继续生成单个提交信息。
+## 1. Analysis & Atomicity
+- **Analyze Staged Changes**: Carefully examine specific files, code logic, and configuration changes.
+- **Check Atomicity**:
+  - If changes are logically separate (e.g., containing both a CSS fix and a database migration), suggest splitting the commit and list the recommended file groupings.
+  - If changes are related, proceed with generating a single commit message.
 
-## 2. 提交信息格式 (Commit Message Format)
-严格遵循 **Conventional Commits** 标准。
+## 2. Commit Message Format
+Strictly follow the **Conventional Commits** standard.
 
 ```text
 <type>(<scope>): <subject>
@@ -21,84 +21,103 @@ alwaysApply: true
 <body>
 ```
 
-### 标题行 (<type>(<scope>): <subject>)
-- **Type (类型)**：`feat` (新功能), `fix` (修复), `docs` (文档), `style` (格式), `refactor` (重构), `perf` (性能), `test` (测试), `build` (构建), `ci` (集成), `chore` (杂务), `revert` (回退)。
-- **Scope (范围)**：（可选）受影响的模块（例如：`auth`, `api`, `ssh`）。
-- **Subject (主题)**：
-  - 使用祈使语气（例如用 "add" 而不是 "added"）。
-  - 结尾不要加句号。
-  - **长度控制在 50-72 个字符以内**。保持简洁。
+### Title Line (<type>(<scope>): <subject>)
+- **Type**: `feat` (new feature), `fix` (bug fix), `docs` (documentation), `style` (formatting), `refactor` (refactoring), `perf` (performance), `test` (testing), `build` (build system), `ci` (CI/CD), `chore` (maintenance), `revert` (revert).
+- **Scope**: (Optional) Affected module (e.g., `auth`, `api`, `ssh`).
+- **Subject**:
+  - Use imperative mood (e.g., "add" instead of "added").
+  - Do not end with a period.
+  - **Keep length within 50-72 characters**. Be concise.
 
-### 正文 (Body) - 复杂更改必填
-- **何时使用**：如果更改涉及具体逻辑、环境变量、多个组件交互或破坏性变更。
-- **内容要求**：解释 *改了什么* 以及 *为什么改*。
-- **换行**：在 72 个字符处换行。
+### Body - Use Sparingly
+- **Default**: Prefer **title-only commits**. Do **not** add a body if the
+  title can clearly express the intent.
+- **When to Use**: Only add a body for complex changes (e.g. breaking
+  changes, non-obvious behavior changes, or important operational notes).
+- **Content Requirements**: Focus on *intent and impact* (why) instead of
+  exhaustively listing every changed detail (what).
+- **Length**: Keep the body short (1–3 lines, or a few concise bullets).
+- **Line Wrapping**: Wrap at 72 characters.
 
-## 3. 内容准则 (核心要求)
-- **信息对等 (Information Parity)**：生成的英文提交信息必须传达与中文摘要**同等水平的技术细节**。
-- **具体细节**：如果中文摘要中提到了具体的环境变量（如 `SKIP_SSH_CONFIG`）、特定的文件路径或具体的算法逻辑，这些内容**必须**包含在英文信息中（通常放在正文 Body 部分）。
-- **拒绝过度简化**：不要为了简洁而牺牲技术准确性。
+## 3. Content Guidelines (Core Requirements)
+- **Different Roles**:
+  - The **Chinese summary** is for detailed explanation and can describe
+    concrete behavior, key variables, and files when needed.
+  - The **English commit message** should be **concise** and mainly express
+    the **intent, behavior change, or reason**, not repeat all details.
+- **Key Details Only**: Mention specific environment variables (such as
+  `SKIP_SSH_CONFIG`), file paths, or algorithm logic **only when they are
+  crucial for understanding the intent or future maintenance**.
+- **Avoid Over-Specification**: Do not mirror the Chinese summary line by
+  line. Prefer a higher-level description that captures *why this change
+  exists*.
 
-## 4. 输出工作流 (Output Workflow)
-在询问是否提交之前，先展示“审查块”。
+## 4. Output Workflow
 
-**输出模板：**
+**REQUIRED FLOW**:
+1. Analyze staged changes
+2. Generate commit message
+3. Display summary (optional, for user information)
+4. Proceed directly to section 5 (Commit Execution Protocol)
+
+**Output Template (Optional Display):**
 
 ```text
-文件已暂存。生成提交信息：
-Review / 确认:
-中文摘要: <在此处生成详细的中文摘要，包含变量名、逻辑细节等技术点>
+Files staged. Generating commit message:
+Chinese Summary: <Generate a clear Chinese summary here. It can be a bit more
+                 detailed and may include key variable names or logic when
+                 helpful.>
 English Draft:
 <type>(<scope>): <subject>
 
-<body - 详细的英文解释，必须包含中文摘要中提到的所有技术细节>
+<body - Optional. If used, briefly explain the intent / behavior change and
+ only the most important context, in a concise way.>
 ```
 
-## 5. 提交执行协议 (Commit Execution Protocol)
+## 5. Commit Execution Protocol
 
-### 5.1 使用文件方式提交 (File-based Commit)
+### 5.1 File-based Commit
 
-**必须使用文件方式提交，避免命令行引号问题。**
+**Must use file-based commit to avoid command-line quote issues.**
 
-- **禁止使用**：`git commit -m "message"` 或 `git commit -m 'message'`
-- **必须使用**：`git commit -F <file>` 从文件读取提交信息
-- **提交信息文件**：使用 `.commit-message` 作为临时文件路径（项目根目录下）
+- **Forbidden**: `git commit -m "message"` or `git commit -m 'message'`
+- **Required**: `git commit -F <file>` to read commit message from file
+- **Commit Message File**: Use `.commit-message` as the temporary file path (in project root directory)
 
-### 5.2 执行流程
+### 5.2 Execution Flow
 
-1. **创建临时文件**：使用文件编辑工具（如 `write`）直接将完整的提交信息写入 `.commit-message` 文件
-   - **禁止使用**：`echo`、`printf` 等 shell 命令（可能遇到引号转义问题）
-   - **必须使用**：文件编辑工具（`write`）直接写入文件内容
-2. **使用文件提交**：执行 `git commit -F .commit-message`
-3. **清理文件**：提交完成后删除 `.commit-message` 文件
+1. **Create Temporary File**: Use file editing tools (such as `write`) to directly write the complete commit message to `.commit-message` file
+   - **Forbidden**: `echo`, `printf` and other shell commands (may encounter quote escaping issues)
+   - **Required**: File editing tools (`write`) to directly write file content
+   - **MUST**: Use the exact content from the "English Draft" shown in section 4
+2. **Commit Using File**: Execute `git commit -F .commit-message`
+3. **Clean Up File**: Delete `.commit-message` file after commit is complete
 
-### 5.3 严格一致性
+### 5.3 Strict Consistency
 
-如果用户回复"确认"、"是"或类似肯定的指令，执行 `git commit` 时使用的信息必须与 **English Draft** 中展示的内容**完全一致**（字面量匹配）。**禁止**在用户确认后对提交信息进行任何形式的修改、润色、缩减或重新格式化。
+The information used when executing `git commit` must be **exactly consistent** (literal match) with the content displayed in **English Draft**. **Forbidden** to modify, polish, reduce, or reformat the commit message in any form.
 
 ---
 
-**正确行为示例：**
+**Correct Behavior Examples:**
 
-**示例 1：简单场景（仅标题行）**
+**Example 1: Simple Scenario (Title Line Only)**
 
-*场景*：修复按钮点击时的样式问题。
+*Scenario*: Fix button click style issue.
 
-*输出*：
-Review / 确认:
-中文摘要: 修复按钮点击时的样式问题，确保点击状态下的视觉反馈正确显示。
+*Output*:
+Chinese Summary: Fix button click style issue, ensuring visual feedback is correctly displayed in the clicked state.
 English Draft:
 fix(ui): correct button click style feedback
 
 ---
 
-**示例 2：复杂场景（需要 Body，包含技术细节）**
+**Example 2: Complex Scenario (Requires Body, Contains Technical Details)**
 
-*场景*：修复 API 认证 token 过期处理，涉及多个文件和函数修改。
+*Scenario*: Fix API authentication token expiration handling, involving modifications to multiple files and functions.
 
-*输出*：
-Review / 确认:
-中文摘要: 修复 API 认证 token 过期处理问题。在 `src/api/auth.ts` 的 `validateToken()` 函数中添加了 token 过期检查逻辑，当 token 超过 `JWT_EXPIRY_TIME` 环境变量设置的过期时间（默认 3600 秒）时，自动调用 `refreshToken()` 刷新 token。同时更新了 `src/config.ts` 中的 `getAuthConfig()` 函数以正确读取 `JWT_EXPIRY_TIME` 配置。
+*Output*:
+Chinese Summary: Fix API authentication token expiration handling issue. Added token expiration check logic in the `validateToken()` function in `src/api/auth.ts`. When the token exceeds the expiration time set by the `JWT_EXPIRY_TIME` environment variable (default: 3600 seconds), automatically calls `refreshToken()` to refresh the token. Also updated the `getAuthConfig()` function in `src/config.ts` to correctly read the `JWT_EXPIRY_TIME` configuration.
 English Draft:
 fix(auth): handle token expiration with auto-refresh
 
