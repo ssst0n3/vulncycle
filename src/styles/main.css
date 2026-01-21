@@ -1235,7 +1235,7 @@ header h1 {
   padding: 0;
   min-width: 0;
   justify-content: flex-start;
-  max-width: 60%;
+  max-width: 75%;
   overflow: hidden;
   flex-shrink: 1;
 }
