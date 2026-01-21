@@ -19,7 +19,7 @@ type ViewType = 'lifecycle' | 'exploitability' | 'intelligence' | 'analysis' | '
 let currentView: ViewType = 'lifecycle';
 
 // 时间轴显示状态
-let timelineVisible: boolean = true;
+let timelineVisible: boolean = false;
 
 // LocalStorage 键名
 const TIMELINE_VISIBLE_KEY = 'vulncycleinsight_timeline_visible';
@@ -28,7 +28,7 @@ const TIMELINE_VISIBLE_KEY = 'vulncycleinsight_timeline_visible';
 function loadTimelineVisibility(): boolean {
   const stored = localStorage.getItem(TIMELINE_VISIBLE_KEY);
   if (stored === null) {
-    return true; // 默认显示
+    return false; // 默认隐藏
   }
   return stored === 'true';
 }

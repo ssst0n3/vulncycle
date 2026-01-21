@@ -110,7 +110,7 @@ function extractTimeInfo(content: string): TimeInfo[] {
   return timeInfo;
 }
 
-// 获取阶段的主要时间（用于排序）
+// 获取阶段的主要时间（用于显示和分组）
 function getPrimaryTimestamp(stage: LifecycleStage): number | null {
   const content = stage.content.trim();
   const timeInfo = extractTimeInfo(content);
@@ -531,11 +531,12 @@ function renderTimelineMarkerHtml(timeNode: TimeNode, isBasicInfoOnly: boolean):
   return '';
 }
 
-// 按时间分组阶段
+// 按时间分组阶段（保持原始顺序，不进行时间排序）
 function groupStagesByTime(stages: LifecycleStage[]): TimeNode[] {
   const timeMap = new Map<number | string, TimeNode>();
+  const nodeOrder: Array<number | string> = []; // 记录节点的出现顺序
   
-  stages.forEach(stage => {
+  stages.forEach((stage, index) => {
     const primaryTimestamp = getPrimaryTimestamp(stage);
     const timeInfo = extractTimeInfo(stage.content);
     
@@ -555,6 +556,9 @@ function groupStagesByTime(stages: LifecycleStage[]): TimeNode[] {
         dateLabel,
         stages: [],
       });
+      
+      // 记录节点的出现顺序
+      nodeOrder.push(key);
     }
     
     timeMap.get(key)!.stages.push({
@@ -564,31 +568,10 @@ function groupStagesByTime(stages: LifecycleStage[]): TimeNode[] {
     });
   });
   
-  // 转换为数组并排序
-  const timeNodes: TimeNode[] = Array.from(timeMap.values());
+  // 按照原始顺序构建结果数组（不进行时间排序）
+  const timeNodes: TimeNode[] = nodeOrder.map(key => timeMap.get(key)!);
   
-  // 分离"基本信息"阶段和其他阶段
-  const basicInfoNodes: TimeNode[] = [];
-  const otherNodes: TimeNode[] = [];
-  
-  timeNodes.forEach(node => {
-    const hasBasicInfo = node.stages.some(s => s.stage.stageNum === 1);
-    if (hasBasicInfo) {
-      basicInfoNodes.push(node);
-    } else {
-      otherNodes.push(node);
-    }
-  });
-  
-  // 分离有时间和无时间的其他节点
-  const otherNodesWithTime = otherNodes.filter(n => n.timestamp !== null);
-  const otherNodesWithoutTime = otherNodes.filter(n => n.timestamp === null);
-  
-  // 按时间戳排序（从早到晚）
-  otherNodesWithTime.sort((a, b) => (a.timestamp as number) - (b.timestamp as number));
-  
-  // 合并：先显示"基本信息"，再显示其他有时间戳的，最后显示无时间戳的
-  return [...basicInfoNodes, ...otherNodesWithTime, ...otherNodesWithoutTime];
+  return timeNodes;
 }
 
 export function updateLifecycleView(markdown: string, container: HTMLElement): boolean {
