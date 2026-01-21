@@ -167,11 +167,8 @@ const subsectionHeadingSelector = 'h3, h4, h5, h6';
 
 function applyStageSubsectionsWithState(stageBody: HTMLElement, subsectionStates?: Map<string, boolean>): void {
   if (!stageBody.querySelector(subsectionHeadingSelector)) {
-    console.log('[Subsection] 没有发现子章节标题，跳过处理');
     return;
   }
-
-  console.log('[Subsection] 开始处理子章节，传入状态数量:', subsectionStates?.size ?? 0);
   
   // 使用传入的状态，如果没有传入则尝试捕获当前状态
   let expandedSubsectionTitles = new Set<string>();
@@ -181,7 +178,6 @@ function applyStageSubsectionsWithState(stageBody: HTMLElement, subsectionStates
     for (const [title, isExpanded] of subsectionStates.entries()) {
       if (isExpanded) {
         expandedSubsectionTitles.add(title);
-        console.log('[Subsection] 使用传入状态 - 展开:', title);
       }
     }
   } else {
@@ -192,7 +188,6 @@ function applyStageSubsectionsWithState(stageBody: HTMLElement, subsectionStates
       if (heading) {
         const titleText = heading.textContent?.trim() || '';
         expandedSubsectionTitles.add(titleText);
-        console.log('[Subsection] 捕获已展开的子章节:', titleText);
       }
     });
   }
@@ -229,10 +224,6 @@ function applyStageSubsectionsWithState(stageBody: HTMLElement, subsectionStates
         icon.className = 'stage-subsection-toggle-icon';
         icon.textContent = wasExpanded ? '▼' : '▶';
 
-        if (wasExpanded) {
-          console.log('[Subsection] 恢复展开状态:', titleText);
-        }
-
         header.appendChild(icon);
         header.appendChild(element);
         section.appendChild(header);
@@ -262,7 +253,6 @@ function applyStageSubsectionsWithState(stageBody: HTMLElement, subsectionStates
 
   stageBody.innerHTML = '';
   stageBody.appendChild(fragment);
-  console.log('[Subsection] 子章节处理完成');
 }
 
 // 保留旧函数签名以兼容其他调用
@@ -336,8 +326,12 @@ function parseMarkdownLink(value: string): { text: string; url: string } | null 
 // 渲染元数据HTML（仅渲染前几个关键元数据，单行显示）
 function renderMetadataHtml(metadata: StageMetadata | undefined, maxItems: number = 5): string {
   if (!metadata || metadata.items.length === 0) {
+    console.log('⚠️ [Renderer] 无元数据需要渲染');
     return '';
   }
+  
+  console.group('📊 [Renderer] 开始渲染元数据');
+  console.log(`原始元数据项数量: ${metadata.items.length}`);
   
   // 定义类型优先级：时间 > 版本 > 人员 > 链接 > 文本
   const typePriority: Record<MetadataItem['type'], number> = {
@@ -348,6 +342,8 @@ function renderMetadataHtml(metadata: StageMetadata | undefined, maxItems: numbe
     'text': 5,
   };
   
+  console.log('类型优先级:', typePriority);
+  
   // 按优先级排序元数据项
   const sortedItems = [...metadata.items].sort((a, b) => {
     const priorityDiff = typePriority[a.type] - typePriority[b.type];
@@ -356,13 +352,47 @@ function renderMetadataHtml(metadata: StageMetadata | undefined, maxItems: numbe
     return 0;
   });
   
+  console.log('排序后的元数据项:');
+  console.table(sortedItems.map((item, idx) => ({
+    '排序位置': idx,
+    '类型': item.type,
+    '优先级': typePriority[item.type],
+    '标签': item.label,
+    '值': item.value.length > 25 ? item.value.substring(0, 25) + '...' : item.value
+  })));
+  
   // 只取前 maxItems 个
   const displayItems = sortedItems.slice(0, maxItems);
   
+  console.log(`实际显示的元数据项数量: ${displayItems.length} (最多${maxItems}个)`);
+  console.log('⚠️ 布局策略: 使用 flex-direction: row-reverse 反向排列，增加容器宽度到90%');
+  console.log(`  → 第一个元数据项 (index=0) 显示在【最右侧】，flex-shrink: 0 确保不被压缩`);
+  console.log(`  → 其他元数据项可以被压缩（flex-shrink: 1），超长显示省略号`);
+  console.log(`  → CSS: .stage-metadata { max-width: 90%, overflow: visible }`);
+  
+  if (displayItems.length > 0) {
+    console.log('🎯 第一个元数据项（最右侧显示）详情:');
+    console.log({
+      '位置': '最右侧（视觉上）',
+      '数组索引': 0,
+      'CSS类': 'metadata-item metadata-' + displayItems[0].type + '-item metadata-item-first',
+      '标签': displayItems[0].label,
+      '值': displayItems[0].value,
+      '类型': displayItems[0].type,
+      '图标': displayItems[0].icon || '无',
+      'flex-shrink': 0
+    });
+  }
+  
   let html = '<div class="stage-metadata">';
   
-  displayItems.forEach(item => {
-    const itemClass = `metadata-item metadata-${item.type}-item`;
+  displayItems.forEach((item, index) => {
+    // 第一个元数据项添加特殊类名，确保其完整显示
+    const itemClass = `metadata-item metadata-${item.type}-item${index === 0 ? ' metadata-item-first' : ''}`;
+    const visualPosition = displayItems.length - index; // 由于 row-reverse，视觉位置是反的
+    
+    console.log(`  渲染元数据项 [${index}] → 视觉位置从右数第${visualPosition}个: [${item.type}] ${item.label}`);
+    
     html += `<div class="${itemClass}">`;
     
     if (item.icon) {
@@ -394,6 +424,10 @@ function renderMetadataHtml(metadata: StageMetadata | undefined, maxItems: numbe
   });
   
   html += '</div>';
+  
+  console.log('✅ [Renderer] 元数据HTML生成完成');
+  console.groupEnd();
+  
   return html;
 }
 
@@ -636,7 +670,6 @@ export function updateLifecycleView(markdown: string, container: HTMLElement): b
       }
 
       // 在更新内容之前，先捕获子章节的展开状态
-      console.log('[Update] 更新 stage body 内容前，捕获子章节状态');
       const subsectionStates = new Map<string, boolean>();
       const existingSubsections = body.querySelectorAll('.stage-subsection');
       existingSubsections.forEach((subsection) => {
@@ -645,9 +678,6 @@ export function updateLifecycleView(markdown: string, container: HTMLElement): b
           const titleText = heading.textContent?.trim() || '';
           const isExpanded = subsection.classList.contains('expanded');
           subsectionStates.set(titleText, isExpanded);
-          if (isExpanded) {
-            console.log('[Update] 记录展开的子章节:', titleText);
-          }
         }
       });
 
