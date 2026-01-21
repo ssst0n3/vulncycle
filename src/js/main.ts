@@ -17,6 +17,67 @@ type ViewType = 'lifecycle' | 'exploitability' | 'intelligence' | 'analysis';
 // 当前视图类型
 let currentView: ViewType = 'lifecycle';
 
+// 时间轴显示状态
+let timelineVisible: boolean = true;
+
+// LocalStorage 键名
+const TIMELINE_VISIBLE_KEY = 'vulncycleinsight_timeline_visible';
+
+// 加载时间轴显示状态
+function loadTimelineVisibility(): boolean {
+  const stored = localStorage.getItem(TIMELINE_VISIBLE_KEY);
+  if (stored === null) {
+    return true; // 默认显示
+  }
+  return stored === 'true';
+}
+
+// 保存时间轴显示状态
+function saveTimelineVisibility(visible: boolean): void {
+  localStorage.setItem(TIMELINE_VISIBLE_KEY, visible.toString());
+}
+
+// 应用时间轴显示状态到DOM
+function applyTimelineVisibility(): void {
+  const previewContent = document.getElementById('preview-content');
+  if (!previewContent) return;
+  
+  const lifecycleContainer = previewContent.querySelector('.lifecycle-container');
+  if (!lifecycleContainer) return;
+  
+  if (timelineVisible) {
+    lifecycleContainer.classList.remove('timeline-hidden');
+  } else {
+    lifecycleContainer.classList.add('timeline-hidden');
+  }
+}
+
+// 更新时间轴按钮的显示状态
+function updateTimelineToggleButton(): void {
+  const timelineToggleBtn = document.getElementById('timeline-toggle-btn') as HTMLButtonElement | null;
+  if (!timelineToggleBtn) return;
+  
+  if (timelineVisible) {
+    timelineToggleBtn.classList.add('active');
+    timelineToggleBtn.title = '隐藏时间轴';
+  } else {
+    timelineToggleBtn.classList.remove('active');
+    timelineToggleBtn.title = '显示时间轴';
+  }
+}
+
+// 更新时间轴控制按钮的可见性（仅在生命周期视图显示）
+function updateTimelineToggleVisibility(): void {
+  const timelineToggleBtn = document.getElementById('timeline-toggle-btn') as HTMLButtonElement | null;
+  if (!timelineToggleBtn) return;
+  
+  if (currentView === 'lifecycle') {
+    timelineToggleBtn.style.display = 'flex';
+  } else {
+    timelineToggleBtn.style.display = 'none';
+  }
+}
+
 type LifecycleViewState = {
   expandedStageKeys: Set<string>;
   expandedSubsectionKeys: Set<string>;
@@ -132,6 +193,11 @@ function renderCurrentView(markdown: string, container: HTMLElement): void {
   } else {
     container.scrollTop = initialScrollTop;
   }
+  
+  // 应用时间轴显示状态（仅在生命周期视图）
+  if (currentView === 'lifecycle') {
+    applyTimelineVisibility();
+  }
 }
 
 // 初始化应用
@@ -183,6 +249,9 @@ function initApp(): void {
 
   // 初始化全屏功能
   initFullscreen();
+  
+  // 初始化时间轴控制功能
+  initTimelineToggle();
 }
 
 // 初始化视图切换功能
@@ -206,9 +275,15 @@ function initViewSwitcher(editor: EditorView, previewContent: HTMLElement): void
     intelligenceBtn.classList.toggle('active', viewType === 'intelligence');
     analysisBtn.classList.toggle('active', viewType === 'analysis');
 
+    // 更新时间轴控制按钮的可见性
+    updateTimelineToggleVisibility();
+
     // 重新渲染当前视图
     const markdown = editor.state.doc.toString();
     renderCurrentView(markdown, previewContent);
+    
+    // 应用时间轴显示状态
+    applyTimelineVisibility();
   };
 
   lifecycleBtn.addEventListener('click', () => switchView('lifecycle'));
@@ -661,6 +736,41 @@ function initFullscreen(): void {
       fullscreenBtn.classList.remove('active');
       editorContainer.classList.remove('fullscreen-active');
     }
+  });
+}
+
+// 初始化时间轴控制功能
+function initTimelineToggle(): void {
+  const timelineToggleBtn = document.getElementById('timeline-toggle-btn') as HTMLButtonElement | null;
+  
+  if (!timelineToggleBtn) {
+    console.error('Timeline toggle button not found');
+    return;
+  }
+  
+  // 从 localStorage 加载时间轴显示状态
+  timelineVisible = loadTimelineVisibility();
+  
+  // 初始化按钮显示状态
+  updateTimelineToggleButton();
+  updateTimelineToggleVisibility();
+  
+  // 应用时间轴显示状态
+  applyTimelineVisibility();
+  
+  // 添加按钮点击事件监听
+  timelineToggleBtn.addEventListener('click', () => {
+    // 切换状态
+    timelineVisible = !timelineVisible;
+    
+    // 保存到 localStorage
+    saveTimelineVisibility(timelineVisible);
+    
+    // 更新按钮状态
+    updateTimelineToggleButton();
+    
+    // 应用到DOM
+    applyTimelineVisibility();
   });
 }
 
