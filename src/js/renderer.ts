@@ -657,10 +657,11 @@ export function updateLifecycleView(markdown: string, container: HTMLElement): b
       }
 
       // 更新元数据区域
+      // 基本信息阶段不显示元数据
       const stageCard = stageElement.querySelector('.stage-card');
       if (stageCard) {
         const existingMetadata = stageCard.querySelector('.stage-metadata');
-        if (stage.metadata && stage.metadata.items.length > 0) {
+        if (stage.metadata && stage.metadata.items.length > 0 && stageNum !== 1) {
           const metadataHtml = renderMetadataHtml(stage.metadata);
           if (existingMetadata) {
             // 更新现有元数据
@@ -673,7 +674,7 @@ export function updateLifecycleView(markdown: string, container: HTMLElement): b
             }
           }
         } else if (existingMetadata) {
-          // 移除元数据
+          // 移除元数据（包括基本信息阶段的元数据）
           existingMetadata.remove();
         }
       }
@@ -829,7 +830,8 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
         html += '</div>';
         
         // 元数据区域（显示在标题右侧）
-        if (stage.metadata) {
+        // 基本信息阶段不显示元数据
+        if (stage.metadata && stageNum !== 1) {
           html += renderMetadataHtml(stage.metadata);
         }
         
