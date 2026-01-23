@@ -1554,17 +1554,19 @@ export function renderCompletionView(markdown: string, container: HTMLElement): 
       html += '</div>';
     }
 
-    // 显示元数据完成情况
-    html += '<div class="completion-stage-detail-item">';
-    html += `<span class="completion-detail-label">元数据：</span>`;
-    if (completion.hasMetadata) {
-      html += `<span class="completion-detail-value ${completion.metadataComplete ? 'complete' : 'partial'}">`;
-      html += completion.metadataComplete ? '✓ 完整' : '⚠ 部分填写';
-      html += ` (+${completion.details.metadataScore}%)</span>`;
-    } else {
-      html += '<span class="completion-detail-value incomplete">✗ 未填写</span>';
+    // 基本信息阶段不统计元数据
+    if (completion.stageNum !== 1) {
+      html += '<div class="completion-stage-detail-item">';
+      html += `<span class="completion-detail-label">元数据：</span>`;
+      if (completion.hasMetadata) {
+        html += `<span class="completion-detail-value ${completion.metadataComplete ? 'complete' : 'partial'}">`;
+        html += completion.metadataComplete ? '✓ 完整' : '⚠ 部分填写';
+        html += ` (+${completion.details.metadataScore}%)</span>`;
+      } else {
+        html += '<span class="completion-detail-value incomplete">✗ 未填写</span>';
+      }
+      html += '</div>';
     }
-    html += '</div>';
     html += '</div>';
 
     html += '</div>';
