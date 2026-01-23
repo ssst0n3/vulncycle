@@ -1,7 +1,13 @@
 import { Marked } from 'marked';
 import { markedHighlight } from 'marked-highlight';
 import hljs from 'highlight.js';
-import { parseLifecycleStages, extractTitle, type LifecycleStage, type StageMetadata, type MetadataItem } from './parser.js';
+import {
+  parseLifecycleStages,
+  extractTitle,
+  type LifecycleStage,
+  type StageMetadata,
+  type MetadataItem,
+} from './parser.js';
 
 // HTML 转义函数
 export function escapeHtml(text: string): string {
@@ -13,17 +19,14 @@ export function escapeHtml(text: string): string {
 // 确保代码块有 hljs 类（后处理函数）
 function ensureHljsClass(html: string): string {
   // 使用正则表达式为所有 code 标签添加 hljs 类（如果还没有）
-  return html.replace(
-    /<code\s+class="([^"]*language-[^"]*)"([^>]*)>/g,
-    (match, classes, rest) => {
-      // 如果已经有 hljs 类，不重复添加
-      if (classes.includes('hljs')) {
-        return match;
-      }
-      // 添加 hljs 类
-      return `<code class="hljs ${classes}"${rest}>`;
+  return html.replace(/<code\s+class="([^"]*language-[^"]*)"([^>]*)>/g, (match, classes, rest) => {
+    // 如果已经有 hljs 类，不重复添加
+    if (classes.includes('hljs')) {
+      return match;
     }
-  );
+    // 添加 hljs 类
+    return `<code class="hljs ${classes}"${rest}>`;
+  });
 }
 
 // 时间信息接口
@@ -38,10 +41,10 @@ function parseDate(dateStr: string): number | null {
   if (!dateStr || dateStr.includes('需要修改') || dateStr.includes('待填写')) {
     return null;
   }
-  
+
   // 移除可能的括号内容
   dateStr = dateStr.replace(/\s*\([^)]*\)\s*$/, '').trim();
-  
+
   // 尝试多种日期格式
   const formats = [
     /^(\d{4})-(\d{1,2})-(\d{1,2})$/, // YYYY-MM-DD
@@ -49,7 +52,7 @@ function parseDate(dateStr: string): number | null {
     /^(\d{4})\.(\d{1,2})\.(\d{1,2})$/, // YYYY.MM.DD
     /^(\d{4})(\d{2})(\d{2})$/, // YYYYMMDD
   ];
-  
+
   for (const format of formats) {
     const match = dateStr.match(format);
     if (match) {
@@ -62,13 +65,13 @@ function parseDate(dateStr: string): number | null {
       }
     }
   }
-  
+
   // 尝试直接解析
   const date = new Date(dateStr);
   if (!isNaN(date.getTime())) {
     return date.getTime();
   }
-  
+
   return null;
 }
 
@@ -76,7 +79,7 @@ function parseDate(dateStr: string): number | null {
 function extractTimeInfo(content: string): TimeInfo[] {
   const timeInfo: TimeInfo[] = [];
   const lines = content.split('\n');
-  
+
   for (const line of lines) {
     // 匹配列表项格式：- **时间类型**：值
     // 支持中文冒号和英文冒号，匹配整行直到行尾
@@ -84,7 +87,7 @@ function extractTimeInfo(content: string): TimeInfo[] {
     if (match) {
       const fieldName = match[1].trim();
       let fieldValue = match[2].trim();
-      
+
       // 只提取包含"时间"的字段
       if (fieldName.includes('时间')) {
         // 如果包含"需要修改"，显示为"待填写"
@@ -94,7 +97,7 @@ function extractTimeInfo(content: string): TimeInfo[] {
           // 移除可能的括号内容（如 "(需要修改)"），但保留日期部分
           fieldValue = fieldValue.replace(/\s*\([^)]*\)\s*$/, '').trim();
         }
-        
+
         if (fieldValue.length > 0) {
           const timestamp = parseDate(fieldValue);
           timeInfo.push({
@@ -106,7 +109,7 @@ function extractTimeInfo(content: string): TimeInfo[] {
       }
     }
   }
-  
+
   return timeInfo;
 }
 
@@ -114,46 +117,46 @@ function extractTimeInfo(content: string): TimeInfo[] {
 function getPrimaryTimestamp(stage: LifecycleStage): number | null {
   const content = stage.content.trim();
   const timeInfo = extractTimeInfo(content);
-  
+
   if (timeInfo.length === 0) {
     return null;
   }
-  
+
   // 优先使用最早的时间戳
   const timestamps = timeInfo
     .map(t => t.timestamp)
     .filter((t): t is number => t !== null)
     .sort((a, b) => a - b);
-  
+
   return timestamps.length > 0 ? timestamps[0] : null;
 }
 
 // 提取内容摘要（精简信息）
 function extractSummary(content: string, maxLength: number = 100): string {
   if (!content.trim()) return '';
-  
+
   // 先按行处理，过滤掉元数据列表项和注释
   const lines = content.split('\n');
   const filteredLines: string[] = [];
-  
+
   for (const line of lines) {
     const trimmedLine = line.trim();
-    
+
     // 跳过 HTML 注释行
     if (trimmedLine.match(/^<!--[\s\S]*?-->$/) || trimmedLine.match(/^&lt;!--[\s\S]*?--&gt;$/)) {
       continue;
     }
-    
+
     // 跳过元数据列表项格式：- **字段名**：值 或 - **字段名**: 值
     if (trimmedLine.match(/^-\s*\*\*[^*]+\*\*[：:]\s*.+$/)) {
       continue;
     }
-    
+
     filteredLines.push(line);
   }
-  
+
   const filteredContent = filteredLines.join('\n');
-  
+
   // 移除 markdown 语法标记，只保留文本
   const text = filteredContent
     .replace(/<!--[\s\S]*?-->/g, '') // 移除 HTML 注释（Markdown 注释格式）
@@ -166,11 +169,11 @@ function extractSummary(content: string, maxLength: number = 100): string {
     .replace(/^\s*[-*+]\s+/gm, '') // 移除列表标记
     .replace(/^\s*\d+\.\s+/gm, '') // 移除有序列表标记
     .trim();
-  
+
   // 提取第一段或前几行
   const textLines = text.split('\n').filter(line => line.trim());
   if (textLines.length === 0) return '';
-  
+
   let summary = textLines[0];
   for (let i = 1; i < Math.min(textLines.length, 3); i++) {
     if ((summary + ' ' + textLines[i]).length <= maxLength) {
@@ -179,24 +182,27 @@ function extractSummary(content: string, maxLength: number = 100): string {
       break;
     }
   }
-  
+
   if (summary.length > maxLength) {
     summary = summary.substring(0, maxLength) + '...';
   }
-  
+
   return summary;
 }
 
 const subsectionHeadingSelector = 'h3, h4, h5, h6';
 
-function applyStageSubsectionsWithState(stageBody: HTMLElement, subsectionStates?: Map<string, boolean>): void {
+function applyStageSubsectionsWithState(
+  stageBody: HTMLElement,
+  subsectionStates?: Map<string, boolean>
+): void {
   if (!stageBody.querySelector(subsectionHeadingSelector)) {
     return;
   }
-  
+
   // 使用传入的状态，如果没有传入则尝试捕获当前状态
   let expandedSubsectionTitles = new Set<string>();
-  
+
   if (subsectionStates) {
     // 使用传入的状态
     for (const [title, isExpanded] of subsectionStates.entries()) {
@@ -207,7 +213,7 @@ function applyStageSubsectionsWithState(stageBody: HTMLElement, subsectionStates
   } else {
     // 如果没有传入状态，尝试捕获当前状态
     const existingSubsections = stageBody.querySelectorAll('.stage-subsection.expanded');
-    existingSubsections.forEach((subsection) => {
+    existingSubsections.forEach(subsection => {
       const heading = subsection.querySelector(subsectionHeadingSelector);
       if (heading) {
         const titleText = heading.textContent?.trim() || '';
@@ -220,7 +226,7 @@ function applyStageSubsectionsWithState(stageBody: HTMLElement, subsectionStates
   const childNodes = Array.from(stageBody.childNodes);
   const sectionStack: Array<{ level: number; body: HTMLElement }> = [];
 
-  childNodes.forEach((node) => {
+  childNodes.forEach(node => {
     if (node.nodeType === Node.ELEMENT_NODE) {
       const element = node as HTMLElement;
       if (element.matches(subsectionHeadingSelector)) {
@@ -237,9 +243,11 @@ function applyStageSubsectionsWithState(stageBody: HTMLElement, subsectionStates
         // 检查这个子章节之前是否是展开的
         const titleText = element.textContent?.trim() || '';
         const wasExpanded = expandedSubsectionTitles.has(titleText);
-        
+
         const section = document.createElement('div');
-        section.className = wasExpanded ? 'stage-subsection expanded' : 'stage-subsection collapsed';
+        section.className = wasExpanded
+          ? 'stage-subsection expanded'
+          : 'stage-subsection collapsed';
 
         const header = document.createElement('div');
         header.className = 'stage-subsection-header';
@@ -256,7 +264,8 @@ function applyStageSubsectionsWithState(stageBody: HTMLElement, subsectionStates
         body.className = 'stage-subsection-body';
         section.appendChild(body);
 
-        const parentBody = sectionStack.length > 0 ? sectionStack[sectionStack.length - 1].body : null;
+        const parentBody =
+          sectionStack.length > 0 ? sectionStack[sectionStack.length - 1].body : null;
         if (parentBody) {
           parentBody.appendChild(section);
         } else {
@@ -286,14 +295,14 @@ function applyStageSubsections(stageBody: HTMLElement): void {
 
 function applyLifecycleSubsections(container: HTMLElement): void {
   const bodies = container.querySelectorAll<HTMLElement>('.stage-body');
-  bodies.forEach((body) => applyStageSubsectionsWithState(body));
+  bodies.forEach(body => applyStageSubsectionsWithState(body));
 }
 
 // 语言别名映射（将常见别名映射到 highlight.js 支持的语言）
 const languageAliases: Record<string, string> = {
-  'shell': 'bash',  // shell 映射到 bash
-  'zsh': 'bash',    // zsh 也使用 bash 高亮
-  'console': 'bash', // console 映射到 bash
+  shell: 'bash', // shell 映射到 bash
+  zsh: 'bash', // zsh 也使用 bash 高亮
+  console: 'bash', // console 映射到 bash
 };
 
 // 创建配置了语法高亮的 marked 实例
@@ -304,7 +313,7 @@ const marked = new Marked(
       if (lang) {
         // 处理语言别名
         const normalizedLang = languageAliases[lang.toLowerCase()] || lang;
-        
+
         if (hljs.getLanguage(normalizedLang)) {
           try {
             const highlighted = hljs.highlight(code, { language: normalizedLang });
@@ -355,11 +364,11 @@ function renderValueWithMarkdownLinks(value: string): string {
   if (fullLink) {
     return `<a class="metadata-value metadata-link" href="${escapeHtml(fullLink.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(fullLink.text)}</a>`;
   }
-  
+
   // 检查是否包含 Markdown 链接模式 [text](url)
   const linkPattern = /\[([^\]]+)\]\(([^)]+)\)/g;
   const matches = Array.from(value.matchAll(linkPattern));
-  
+
   if (matches.length === 0) {
     // 没有链接，直接转义返回
     if (value.startsWith('http') || value.includes('://')) {
@@ -367,35 +376,35 @@ function renderValueWithMarkdownLinks(value: string): string {
     }
     return `<span class="metadata-value">${escapeHtml(value)}</span>`;
   }
-  
+
   // 有链接，需要混合渲染
   let result = '';
   let lastIndex = 0;
-  
-  matches.forEach((match) => {
+
+  matches.forEach(match => {
     const matchIndex = match.index!;
     const matchLength = match[0].length;
-    
+
     // 添加链接前的普通文本
     if (matchIndex > lastIndex) {
       const textBefore = value.substring(lastIndex, matchIndex);
       result += escapeHtml(textBefore);
     }
-    
+
     // 添加链接
     const linkText = match[1];
     const linkUrl = match[2];
     result += `<a class="metadata-value metadata-link" href="${escapeHtml(linkUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)}</a>`;
-    
+
     lastIndex = matchIndex + matchLength;
   });
-  
+
   // 添加剩余的普通文本
   if (lastIndex < value.length) {
     const textAfter = value.substring(lastIndex);
     result += escapeHtml(textAfter);
   }
-  
+
   return `<span class="metadata-value">${result}</span>`;
 }
 
@@ -405,70 +414,74 @@ function renderMetadataHtml(metadata: StageMetadata | undefined, maxItems: numbe
     console.log('⚠️ [Renderer] 无元数据需要渲染');
     return '';
   }
-  
+
   console.group('📊 [Renderer] 开始渲染元数据');
   console.log(`原始元数据项数量: ${metadata.items.length}`);
-  
+
   // 保持原始输入顺序，不进行排序
   // 按照模板中的顺序显示：合入时间、提交时间、修复版本、修复者...
   const displayItems = metadata.items.slice(0, maxItems);
-  
+
   console.log('保持原始顺序的元数据项:');
-  console.table(displayItems.map((item, idx) => ({
-    '顺序位置': idx + 1,
-    '类型': item.type,
-    '标签': item.label,
-    '值': item.value.length > 25 ? item.value.substring(0, 25) + '...' : item.value
-  })));
-  
+  console.table(
+    displayItems.map((item, idx) => ({
+      顺序位置: idx + 1,
+      类型: item.type,
+      标签: item.label,
+      值: item.value.length > 25 ? item.value.substring(0, 25) + '...' : item.value,
+    }))
+  );
+
   console.log(`实际显示的元数据项数量: ${displayItems.length} (最多${maxItems}个)`);
   console.log('⚠️ 布局策略: 使用 flex-direction: row-reverse 反向排列，增加容器宽度到90%');
   console.log(`  → 第一个元数据项 (index=0) 显示在【最右侧】，flex-shrink: 0 确保不被压缩`);
   console.log(`  → 其他元数据项可以被压缩（flex-shrink: 1），超长显示省略号`);
   console.log(`  → CSS: .stage-metadata { max-width: 90%, overflow: visible }`);
-  
+
   if (displayItems.length > 0) {
     console.log('🎯 第一个元数据项（最右侧显示）详情:');
     console.log({
-      '位置': '最右侧（视觉上）',
-      '数组索引': 0,
-      'CSS类': 'metadata-item metadata-' + displayItems[0].type + '-item metadata-item-first',
-      '标签': displayItems[0].label,
-      '值': displayItems[0].value,
-      '类型': displayItems[0].type,
-      '图标': displayItems[0].icon || '无',
-      'flex-shrink': 0
+      位置: '最右侧（视觉上）',
+      数组索引: 0,
+      CSS类: 'metadata-item metadata-' + displayItems[0].type + '-item metadata-item-first',
+      标签: displayItems[0].label,
+      值: displayItems[0].value,
+      类型: displayItems[0].type,
+      图标: displayItems[0].icon || '无',
+      'flex-shrink': 0,
     });
   }
-  
+
   let html = '<div class="stage-metadata">';
-  
+
   displayItems.forEach((item, index) => {
     // 第一个元数据项添加特殊类名，确保其完整显示
     const itemClass = `metadata-item metadata-${item.type}-item${index === 0 ? ' metadata-item-first' : ''}`;
     const visualPosition = displayItems.length - index; // 由于 row-reverse，视觉位置是反的
-    
-    console.log(`  渲染元数据项 [${index}] → 视觉位置从右数第${visualPosition}个: [${item.type}] ${item.label}`);
-    
+
+    console.log(
+      `  渲染元数据项 [${index}] → 视觉位置从右数第${visualPosition}个: [${item.type}] ${item.label}`
+    );
+
     html += `<div class="${itemClass}">`;
-    
+
     if (item.icon) {
       html += `<span class="metadata-icon">${item.icon}</span>`;
     }
-    
+
     html += `<span class="metadata-label">${escapeHtml(item.label)}</span>`;
-    
+
     // 渲染值（支持混合格式的 Markdown 链接）
     html += renderValueWithMarkdownLinks(item.value);
-    
+
     html += `</div>`;
   });
-  
+
   html += '</div>';
-  
+
   console.log('✅ [Renderer] 元数据HTML生成完成');
   console.groupEnd();
-  
+
   return html;
 }
 
@@ -478,15 +491,21 @@ function formatDate(timestamp: number): string {
   const year = String(date.getFullYear());
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
-  
+
   // 左列：年份的每一位数字 + "-" 竖向排列
   const yearWithDash = year + '-';
-  const yearChars = yearWithDash.split('').map(char => `<span class="date-year-digit">${char}</span>`).join('');
-  
+  const yearChars = yearWithDash
+    .split('')
+    .map(char => `<span class="date-year-digit">${char}</span>`)
+    .join('');
+
   // 右列：月日的每一位数字和分隔符竖向排列（月份 + "-" + 日期）
   const monthDayWithDash = month + '-' + day;
-  const monthDayChars = monthDayWithDash.split('').map(char => `<span class="date-month-day-char">${char}</span>`).join('');
-  
+  const monthDayChars = monthDayWithDash
+    .split('')
+    .map(char => `<span class="date-month-day-char">${char}</span>`)
+    .join('');
+
   return `<div class="date-columns"><div class="date-column-left">${yearChars}</div><div class="date-column-right">${monthDayChars}</div></div>`;
 }
 
@@ -514,7 +533,7 @@ interface TimeNode {
 
 function renderTimeBarHtml(timeInfo: TimeInfo[]): string {
   return timeInfo
-    .map((time) => {
+    .map(time => {
       const timeLabel =
         time.timestamp !== null
           ? `<span class="time-label-name">${escapeHtml(time.label)}</span><span class="time-label-value">${escapeHtml(time.value)}</span>`
@@ -530,7 +549,10 @@ function renderTimelineMarkerHtml(timeNode: TimeNode, isBasicInfoOnly: boolean):
     return `<div class="timeline-date-label">${formatDate(timeNode.timestamp)}</div>`;
   }
   if (!isBasicInfoOnly) {
-    const unknownChars = '未指定'.split('').map(char => `<span class="unknown-char">${escapeHtml(char)}</span>`).join('');
+    const unknownChars = '未指定'
+      .split('')
+      .map(char => `<span class="unknown-char">${escapeHtml(char)}</span>`)
+      .join('');
     return `<div class="timeline-date-label timeline-date-unknown"><div class="unknown-column">${unknownChars}</div></div>`;
   }
   return '';
@@ -540,14 +562,14 @@ function renderTimelineMarkerHtml(timeNode: TimeNode, isBasicInfoOnly: boolean):
 function groupStagesByTime(stages: LifecycleStage[]): TimeNode[] {
   const timeMap = new Map<number | string, TimeNode>();
   const nodeOrder: Array<number | string> = []; // 记录节点的出现顺序
-  
+
   stages.forEach((stage, index) => {
     const primaryTimestamp = getPrimaryTimestamp(stage);
     const timeInfo = extractTimeInfo(stage.content);
-    
+
     // 使用时间戳作为key，如果没有时间戳则使用特殊key
     const key = primaryTimestamp ?? `no-time-${stage.stageNum ?? 'unknown'}`;
-    
+
     if (!timeMap.has(key)) {
       let dateLabel: string;
       if (primaryTimestamp !== null) {
@@ -555,27 +577,27 @@ function groupStagesByTime(stages: LifecycleStage[]): TimeNode[] {
       } else {
         dateLabel = '未指定时间';
       }
-      
+
       timeMap.set(key, {
         timestamp: primaryTimestamp,
         dateLabel,
         stages: [],
       });
-      
+
       // 记录节点的出现顺序
       nodeOrder.push(key);
     }
-    
+
     timeMap.get(key)!.stages.push({
       stage,
       timeInfo,
       primaryTimestamp,
     });
   });
-  
+
   // 按照原始顺序构建结果数组（不进行时间排序）
   const timeNodes: TimeNode[] = nodeOrder.map(key => timeMap.get(key)!);
-  
+
   return timeNodes;
 }
 
@@ -697,7 +719,7 @@ export function updateLifecycleView(markdown: string, container: HTMLElement): b
       // 在更新内容之前，先捕获子章节的展开状态
       const subsectionStates = new Map<string, boolean>();
       const existingSubsections = body.querySelectorAll('.stage-subsection');
-      existingSubsections.forEach((subsection) => {
+      existingSubsections.forEach(subsection => {
         const heading = subsection.querySelector(subsectionHeadingSelector);
         if (heading) {
           const titleText = heading.textContent?.trim() || '';
@@ -711,7 +733,7 @@ export function updateLifecycleView(markdown: string, container: HTMLElement): b
       } else {
         body.innerHTML = '<p class="stage-empty">暂无内容</p>';
       }
-      
+
       // 将状态传递给 applyStageSubsections
       applyStageSubsectionsWithState(body, subsectionStates);
     }
@@ -740,7 +762,7 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
     let inFrontMatter = false;
     let skipFirstH1 = true;
     const contentLines: string[] = [];
-    
+
     for (const line of lines) {
       if (line.match(/^---\s*$/)) {
         inFrontMatter = !inFrontMatter;
@@ -753,91 +775,97 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
       }
       contentLines.push(line);
     }
-    
+
     const content = contentLines.join('\n').trim();
     html += '<div class="lifecycle-stages">';
     if (content) {
       html += `<div class="stage-content">${ensureHljsClass(marked.parse(content))}</div>`;
     } else {
-      html += '<div class="stage-content"><p style="text-align: center; color: #999; padding: 40px;">请在左侧输入 Markdown 内容...</p></div>';
+      html +=
+        '<div class="stage-content"><p style="text-align: center; color: #999; padding: 40px;">请在左侧输入 Markdown 内容...</p></div>';
     }
     html += '</div>';
   } else {
     // 按时间分组阶段
     const timeNodes = groupStagesByTime(stages);
-    
+
     html += '<div class="timeline-wrapper">';
     html += '<div class="timeline-container">';
-    
+
     // 时间轴线条（作为背景）
     html += '<div class="timeline-axis-line"></div>';
-    
+
     // 时间线内容
     html += '<div class="timeline-content-wrapper">';
 
     timeNodes.forEach((timeNode, nodeIndex) => {
       const hasTimestamp = timeNode.timestamp !== null;
       const dateStr = hasTimestamp && timeNode.timestamp ? formatDate(timeNode.timestamp) : '';
-      
+
       // 检查是否只包含基本信息（stageNum === 1）
       const isBasicInfoOnly = timeNode.stages.every(s => s.stage.stageNum === 1);
-      
+
       // 计算时间范围（如果有多个时间点）
       const allTimestamps = timeNode.stages
         .flatMap(s => s.timeInfo.map(t => t.timestamp))
         .filter((t): t is number => t !== null)
         .sort((a, b) => a - b);
-      
+
       const minTimestamp = allTimestamps.length > 0 ? allTimestamps[0] : null;
-      const maxTimestamp = allTimestamps.length > 0 ? allTimestamps[allTimestamps.length - 1] : null;
-      const hasTimeRange = minTimestamp !== null && maxTimestamp !== null && minTimestamp !== maxTimestamp;
-      
+      const maxTimestamp =
+        allTimestamps.length > 0 ? allTimestamps[allTimestamps.length - 1] : null;
+      const hasTimeRange =
+        minTimestamp !== null && maxTimestamp !== null && minTimestamp !== maxTimestamp;
+
       // 时间节点组
       html += `<div class="timeline-node-group" data-timestamp="${timeNode.timestamp ?? ''}" data-index="${nodeIndex}">`;
-      
+
       // 时间轴标记（左侧）
       html += '<div class="timeline-marker">';
       if (hasTimestamp && timeNode.timestamp) {
         html += `<div class="timeline-date-label">${dateStr}</div>`;
       } else if (!isBasicInfoOnly) {
         // 只有非基本信息节点才显示"未指定"，竖向1列显示
-        const unknownChars = '未指定'.split('').map(char => `<span class="unknown-char">${escapeHtml(char)}</span>`).join('');
+        const unknownChars = '未指定'
+          .split('')
+          .map(char => `<span class="unknown-char">${escapeHtml(char)}</span>`)
+          .join('');
         html += `<div class="timeline-date-label timeline-date-unknown"><div class="unknown-column">${unknownChars}</div></div>`;
       }
       // 基本信息节点如果没有时间戳，不显示任何标记
       html += '</div>';
-      
+
       // 内容区域（右侧）
       html += '<div class="timeline-content-area">';
-      
+
       // 该时间点的所有阶段
       html += '<div class="timeline-stages-container">';
-      
+
       timeNode.stages.forEach(({ stage, timeInfo, primaryTimestamp }, stageIndex) => {
         const stageNum = stage.stageNum ?? '?';
         const content = stage.content.trim();
         const summary = extractSummary(content);
 
         html += `<div class="lifecycle-stage collapsed" data-stage="${stageNum}" data-node-index="${nodeIndex}" data-stage-index="${stageIndex}">`;
-        
+
         html += '<div class="stage-card">';
-        
+
         // 阶段头部
         html += '<div class="stage-header">';
         html += '<div class="stage-header-left">';
         html += `<div class="stage-number-badge" data-stage="${stageNum}">${stageNum}</div>`;
         html += `<span class="stage-header-title">${escapeHtml(stage.title)}</span>`;
         html += '</div>';
-        
+
         // 元数据区域（显示在标题右侧）
         // 基本信息阶段不显示元数据
         if (stage.metadata && stageNum !== 1) {
           html += renderMetadataHtml(stage.metadata);
         }
-        
+
         html += '<span class="stage-toggle-icon">▼</span>';
         html += '</div>';
-        
+
         // 摘要（仅在折叠时显示）
         if (summary) {
           html += `<div class="stage-summary">${escapeHtml(summary)}</div>`;
@@ -853,7 +881,7 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
         html += '</div>'; // stage-card
         html += '</div>'; // lifecycle-stage
       });
-      
+
       html += '</div>'; // timeline-stages-container
       html += '</div>'; // timeline-content-area
       html += '</div>'; // timeline-node-group
@@ -882,7 +910,7 @@ function extractExploitabilityContent(markdown: string): {
 } {
   const stages = parseLifecycleStages(markdown);
   const exploitStage = stages.find(stage => stage.stageNum === 8);
-  
+
   if (!exploitStage) {
     return {
       title: '漏洞利用',
@@ -958,7 +986,8 @@ export function renderExploitabilityView(markdown: string, container: HTMLElemen
 
   if (sections.length === 0) {
     html += '<div class="exploitability-empty">';
-    html += '<p style="text-align: center; color: #999; padding: 40px;">未找到漏洞利用相关内容，请确保文档包含第8节"漏洞利用"的内容。</p>';
+    html +=
+      '<p style="text-align: center; color: #999; padding: 40px;">未找到漏洞利用相关内容，请确保文档包含第8节"漏洞利用"的内容。</p>';
     html += '</div>';
   } else {
     html += '<div class="exploitability-sections">';
@@ -973,7 +1002,8 @@ export function renderExploitabilityView(markdown: string, container: HTMLElemen
       if (section.content.trim()) {
         html += `<div class="exploitability-section-content">${ensureHljsClass(marked.parse(section.content))}</div>`;
       } else {
-        html += '<div class="exploitability-section-content"><p class="section-empty">暂无内容</p></div>';
+        html +=
+          '<div class="exploitability-section-content"><p class="section-empty">暂无内容</p></div>';
       }
 
       html += '</div>';
@@ -993,7 +1023,7 @@ function extractIntelligenceContent(markdown: string): {
 } {
   const stages = parseLifecycleStages(markdown);
   const intelligenceStage = stages.find(stage => stage.stageNum === 7);
-  
+
   if (!intelligenceStage) {
     return {
       title: '漏洞情报',
@@ -1024,7 +1054,8 @@ export function renderIntelligenceView(markdown: string, container: HTMLElement)
 
   if (!content) {
     html += '<div class="intelligence-empty">';
-    html += '<p style="text-align: center; color: #999; padding: 40px;">未找到漏洞情报相关内容，请确保文档包含第7节"漏洞情报"的内容。</p>';
+    html +=
+      '<p style="text-align: center; color: #999; padding: 40px;">未找到漏洞情报相关内容，请确保文档包含第7节"漏洞情报"的内容。</p>';
     html += '</div>';
   } else {
     html += '<div class="intelligence-content">';
@@ -1043,10 +1074,11 @@ function extractAnalysisContent(markdown: string): Array<{
   content: string;
 }> {
   const stages = parseLifecycleStages(markdown);
-  const analysisStages = stages.filter(stage => 
-    stage.stageNum === 2 || // 漏洞引入
-    stage.stageNum === 3 || // 漏洞发现
-    stage.stageNum === 5    // 漏洞修复
+  const analysisStages = stages.filter(
+    stage =>
+      stage.stageNum === 2 || // 漏洞引入
+      stage.stageNum === 3 || // 漏洞发现
+      stage.stageNum === 5 // 漏洞修复
   );
 
   return analysisStages.map(stage => ({
@@ -1072,7 +1104,8 @@ export function renderAnalysisView(markdown: string, container: HTMLElement): vo
 
   if (analysisStages.length === 0) {
     html += '<div class="analysis-empty">';
-    html += '<p style="text-align: center; color: #999; padding: 40px;">未找到漏洞原理相关内容，请确保文档包含第2节"漏洞引入"、第3节"漏洞发现"或第5节"漏洞修复"的内容。</p>';
+    html +=
+      '<p style="text-align: center; color: #999; padding: 40px;">未找到漏洞原理相关内容，请确保文档包含第2节"漏洞引入"、第3节"漏洞发现"或第5节"漏洞修复"的内容。</p>';
     html += '</div>';
   } else {
     html += '<div class="analysis-sections">';
@@ -1081,7 +1114,7 @@ export function renderAnalysisView(markdown: string, container: HTMLElement): vo
       const sectionId = `analysis-section-${index}`;
       const stageGradient = `var(--gradient-stage-${stage.stageNum})`;
       const stageBorderColor = `var(--border-color-stage-${stage.stageNum})`;
-      
+
       html += `<div class="analysis-section" id="${sectionId}" data-stage="${stage.stageNum}">`;
       html += `<div class="analysis-section-header" style="background: ${stageGradient}; border-bottom-color: ${stageBorderColor};">`;
       html += `<div class="analysis-section-number" data-stage="${stage.stageNum}">${stage.stageNum}</div>`;
@@ -1116,12 +1149,12 @@ interface Subsection {
 function parseSubsections(content: string): Subsection[] {
   const subsections: Subsection[] = [];
   const lines = content.split('\n');
-  
+
   let currentSubsection: { title: string; level: number; contentLines: string[] } | null = null;
-  
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    
+
     // 检测子章节标题（h3-h6）
     const headingMatch = line.match(/^(#{3,6})\s+(.+)$/);
     if (headingMatch) {
@@ -1137,7 +1170,7 @@ function parseSubsections(content: string): Subsection[] {
           isComplete: !hasTodo,
         });
       }
-      
+
       // 开始新子章节
       const level = headingMatch[1].length;
       const title = headingMatch[2].trim();
@@ -1148,13 +1181,13 @@ function parseSubsections(content: string): Subsection[] {
       };
       continue;
     }
-    
+
     // 收集内容
     if (currentSubsection) {
       currentSubsection.contentLines.push(line);
     }
   }
-  
+
   // 保存最后一个子章节
   if (currentSubsection) {
     const subsectionContent = currentSubsection.contentLines.join('\n').trim();
@@ -1166,7 +1199,7 @@ function parseSubsections(content: string): Subsection[] {
       isComplete: !hasTodo,
     });
   }
-  
+
   return subsections;
 }
 
@@ -1189,22 +1222,22 @@ interface StageCompletion {
 function calculateStageCompletion(stage: LifecycleStage): StageCompletion {
   const content = stage.content.trim();
   const hasContent = content.length > 0 && content !== '暂无内容';
-  
+  const isBasicInfoStage = stage.stageNum === 1 || stage.title.includes('基本信息');
+
   // 解析子章节
   const subsections = parseSubsections(content);
-  
+
   // 如果没有子章节，检查整个内容是否包含TODO
   let completion = 0;
   let totalSubsections = 0;
   let completedSubsections = 0;
-  
+
   if (subsections.length > 0) {
     // 有子章节：根据子章节完成度计算
     totalSubsections = subsections.length;
     completedSubsections = subsections.filter(s => s.isComplete).length;
-    completion = totalSubsections > 0 
-      ? Math.round((completedSubsections / totalSubsections) * 100)
-      : 0;
+    completion =
+      totalSubsections > 0 ? Math.round((completedSubsections / totalSubsections) * 100) : 0;
   } else {
     // 没有子章节：检查整个内容是否包含TODO
     if (hasContent) {
@@ -1216,127 +1249,161 @@ function calculateStageCompletion(stage: LifecycleStage): StageCompletion {
     totalSubsections = 0;
     completedSubsections = 0;
   }
-  
+
   // 检查值是否为占位符
   function isPlaceholderValue(value: string): boolean {
     const trimmed = value.trim();
     if (!trimmed) return true;
-    
+
     // 检查常见的占位符关键词
-    if (trimmed.includes('需要修改') || 
-        trimmed.includes('待填写') || 
-        trimmed.includes('待完成') ||
-        trimmed.includes('待处理') ||
-        trimmed.includes('TBD') ||
-        trimmed.includes('N/A') ||
-        trimmed === '...') {
+    if (
+      trimmed.includes('需要修改') ||
+      trimmed.includes('待填写') ||
+      trimmed.includes('待完成') ||
+      trimmed.includes('待处理') ||
+      trimmed.includes('TBD') ||
+      trimmed.includes('N/A') ||
+      trimmed === '...'
+    ) {
       return true;
     }
-    
+
     // 检查中文占位符文本
     const chinesePlaceholders = [
-      '研究者名称', '研究机构/公司', '开发者名称',
-      '研究者', '机构', '公司', '开发者'
+      '研究者名称',
+      '研究机构/公司',
+      '开发者名称',
+      '研究者',
+      '机构',
+      '公司',
+      '开发者',
     ];
-    if (chinesePlaceholders.some(placeholder => trimmed === placeholder || trimmed.includes(placeholder))) {
+    if (
+      chinesePlaceholders.some(
+        placeholder => trimmed === placeholder || trimmed.includes(placeholder)
+      )
+    ) {
       return true;
     }
-    
+
     // 检查日期占位符：YYYY-MM-DD 格式或默认占位符日期
-    if (/^YYYY-MM-DD$/i.test(trimmed) || 
-        (trimmed.match(/^\d{4}-\d{2}-\d{2}$/) && trimmed.startsWith('2000-01-01'))) {
+    if (
+      /^YYYY-MM-DD$/i.test(trimmed) ||
+      (trimmed.match(/^\d{4}-\d{2}-\d{2}$/) && trimmed.startsWith('2000-01-01'))
+    ) {
       return true;
     }
-    
+
     // 检查版本占位符：vX.Y.Z, vX.X.X, vX.Y.Z 等格式（包含 X, Y, Z 字母的版本号）
     if (/^v[XxYyZz]\.([XxYyZz]|\d+)\.([XxYyZz]|\d+)$/i.test(trimmed)) {
       return true;
     }
-    
+
     // 检查编号占位符：SA-XXXX, CVE-XXXX 等格式
     if (/^(SA|CVE|CWE)-[Xx]{2,}$/i.test(trimmed)) {
       return true;
     }
-    
+
     // 检查示例域名
     if (trimmed.includes('example.com') || trimmed.includes('example.org')) {
       return true;
     }
-    
+
     // 检查常见的占位符 commit hash（如 def5678, abc1234 等简单模式）
-    if (/^[a-f0-9]{6,8}$/i.test(trimmed) && 
-        (trimmed.toLowerCase().startsWith('def') || 
-         trimmed.toLowerCase().startsWith('abc') ||
-         trimmed.toLowerCase() === 'commit_sha')) {
+    if (
+      /^[a-f0-9]{6,8}$/i.test(trimmed) &&
+      (trimmed.toLowerCase().startsWith('def') ||
+        trimmed.toLowerCase().startsWith('abc') ||
+        trimmed.toLowerCase() === 'commit_sha')
+    ) {
       return true;
     }
-    
+
     // 检查 Markdown 链接中的占位符文本
     const linkMatch = trimmed.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
     if (linkMatch) {
       const linkText = linkMatch[1].trim();
       const linkUrl = linkMatch[2].trim();
-      
+
       // 检查链接文本是否为占位符
       const placeholderTexts = [
-        'username', 'XXX', 'commit_sha', 'commit', 'sha',
-        '研究者名称', '开发者名称', '研究机构/公司',
-        '研究者', '机构', '公司', '开发者',
-        'vX.X.X', 'vX.Y.Z', 'SA-XXXX', 'def5678', 'abc1234'
+        'username',
+        'XXX',
+        'commit_sha',
+        'commit',
+        'sha',
+        '研究者名称',
+        '开发者名称',
+        '研究机构/公司',
+        '研究者',
+        '机构',
+        '公司',
+        '开发者',
+        'vX.X.X',
+        'vX.Y.Z',
+        'SA-XXXX',
+        'def5678',
+        'abc1234',
       ];
-      
+
       // 检查链接文本是否匹配占位符（支持 @username, #XXX 等格式）
       const normalizedLinkText = linkText.toLowerCase();
-      if (placeholderTexts.some(placeholder => {
+      if (
+        placeholderTexts.some(placeholder => {
           const normalizedPlaceholder = placeholder.toLowerCase();
-          return normalizedLinkText === normalizedPlaceholder ||
-                 normalizedLinkText === '@' + normalizedPlaceholder ||
-                 normalizedLinkText === '#' + normalizedPlaceholder ||
-                 normalizedLinkText.includes(normalizedPlaceholder);
-        })) {
+          return (
+            normalizedLinkText === normalizedPlaceholder ||
+            normalizedLinkText === '@' + normalizedPlaceholder ||
+            normalizedLinkText === '#' + normalizedPlaceholder ||
+            normalizedLinkText.includes(normalizedPlaceholder)
+          );
+        })
+      ) {
         return true;
       }
-      
+
       // 检查链接 URL 是否包含占位符路径或示例域名
       const normalizedUrl = linkUrl.toLowerCase();
-      if (normalizedUrl.includes('/username') || 
-          normalizedUrl.includes('/xxx') || 
-          normalizedUrl.includes('/commit_sha') ||
-          normalizedUrl.includes('/commit/commit') ||
-          normalizedUrl.includes('/pull/xxx') ||
-          normalizedUrl.includes('/org/repo') ||
-          normalizedUrl.includes('example.com') ||
-          normalizedUrl.includes('example.org')) {
+      if (
+        normalizedUrl.includes('/username') ||
+        normalizedUrl.includes('/xxx') ||
+        normalizedUrl.includes('/commit_sha') ||
+        normalizedUrl.includes('/commit/commit') ||
+        normalizedUrl.includes('/pull/xxx') ||
+        normalizedUrl.includes('/org/repo') ||
+        normalizedUrl.includes('example.com') ||
+        normalizedUrl.includes('example.org')
+      ) {
         return true;
       }
     }
-    
+
     return false;
   }
-  
+
   // 元数据完成度（作为额外加分，最多20分）
   let metadataScore = 0;
   let hasMetadata = false;
   let metadataComplete = false;
   let completeMetadataItems = 0;
-  
-  if (stage.metadata && stage.metadata.items.length > 0) {
+
+  if (!isBasicInfoStage && stage.metadata && stage.metadata.items.length > 0) {
     const totalItems = stage.metadata.items.length;
     completeMetadataItems = stage.metadata.items.filter(item => {
       return !isPlaceholderValue(item.value);
     }).length;
-    
+
     // 只有当存在有效（非占位符）元数据项时，才认为有元数据
     hasMetadata = completeMetadataItems > 0;
-    
+
     // 元数据完成度转换为0-20分
     metadataScore = Math.round((completeMetadataItems / Math.max(totalItems, 1)) * 20);
     metadataComplete = completeMetadataItems === totalItems && totalItems > 0;
   }
-  
+
   // 最终完成度：子章节完成度 + 元数据加分（但不超过100%）
   const finalCompletion = Math.min(100, completion + metadataScore);
-  
+
   return {
     stageNum: stage.stageNum ?? 0,
     title: stage.title,
@@ -1363,16 +1430,16 @@ export function renderCompletionView(markdown: string, container: HTMLElement): 
 
   const docTitle = extractTitle(markdown);
   const stages = parseLifecycleStages(markdown);
-  
+
   // 计算所有阶段的完成度
   const completions: StageCompletion[] = [];
-  
+
   stages.forEach(stage => {
     if (stage.stageNum !== null) {
       completions.push(calculateStageCompletion(stage));
     }
   });
-  
+
   // 确保所有9个阶段都有数据（即使不存在也显示为0%）
   const STAGE_KEYWORDS: Record<string, number> = {
     基本信息: 1,
@@ -1385,7 +1452,7 @@ export function renderCompletionView(markdown: string, container: HTMLElement): 
     漏洞利用: 8,
     防护: 9,
   };
-  
+
   const allStages: StageCompletion[] = [];
   for (let i = 1; i <= 9; i++) {
     const existing = completions.find(c => c.stageNum === i);
@@ -1393,7 +1460,8 @@ export function renderCompletionView(markdown: string, container: HTMLElement): 
       allStages.push(existing);
     } else {
       // 从配置中获取阶段名称
-      const stageTitle = Object.keys(STAGE_KEYWORDS).find(key => STAGE_KEYWORDS[key] === i) || `阶段 ${i}`;
+      const stageTitle =
+        Object.keys(STAGE_KEYWORDS).find(key => STAGE_KEYWORDS[key] === i) || `阶段 ${i}`;
       allStages.push({
         stageNum: i,
         title: stageTitle,
@@ -1410,15 +1478,15 @@ export function renderCompletionView(markdown: string, container: HTMLElement): 
       });
     }
   }
-  
+
   // 计算总体完成度
   const totalCompletion = Math.round(
     allStages.reduce((sum, stage) => sum + stage.completion, 0) / allStages.length
   );
-  
+
   let html = '<div class="completion-container">';
   html += `<h1 class="completion-title">${escapeHtml(docTitle)}</h1>`;
-  
+
   // 总体完成度卡片
   html += '<div class="completion-overview">';
   html += '<div class="completion-overview-card">';
@@ -1432,27 +1500,28 @@ export function renderCompletionView(markdown: string, container: HTMLElement): 
   html += `<div class="completion-overview-stats">已完成 ${allStages.filter(s => s.completion >= 80).length} / ${allStages.length} 个阶段</div>`;
   html += '</div>';
   html += '</div>';
-  
+
   // 各阶段完成度列表
   html += '<div class="completion-stages">';
-  
-  allStages.forEach((completion) => {
+
+  allStages.forEach(completion => {
     const stageGradient = `var(--gradient-stage-${completion.stageNum})`;
-    const completionClass = completion.completion >= 80 ? 'high' : completion.completion >= 50 ? 'medium' : 'low';
-    
+    const completionClass =
+      completion.completion >= 80 ? 'high' : completion.completion >= 50 ? 'medium' : 'low';
+
     html += `<div class="completion-stage" data-stage="${completion.stageNum}">`;
     html += '<div class="completion-stage-header">';
     html += `<div class="completion-stage-number" data-stage="${completion.stageNum}">${completion.stageNum}</div>`;
     html += `<h3 class="completion-stage-title">${escapeHtml(completion.title)}</h3>`;
     html += `<div class="completion-stage-percentage ${completionClass}">${completion.completion}%</div>`;
     html += '</div>';
-    
+
     html += '<div class="completion-stage-progress">';
     html += `<div class="completion-stage-progress-bar" style="width: ${completion.completion}%; background: ${stageGradient}"></div>`;
     html += '</div>';
-    
+
     html += '<div class="completion-stage-details">';
-    
+
     // 显示子章节完成情况
     if (completion.details.totalSubsections > 0) {
       html += '<div class="completion-stage-detail-item">';
@@ -1461,7 +1530,7 @@ export function renderCompletionView(markdown: string, container: HTMLElement): 
       html += `${completion.details.completedSubsections} / ${completion.details.totalSubsections} 已完成`;
       html += '</span>';
       html += '</div>';
-      
+
       // 显示子章节列表
       if (completion.subsections.length > 0) {
         html += '<div class="completion-subsections">';
@@ -1484,7 +1553,7 @@ export function renderCompletionView(markdown: string, container: HTMLElement): 
       html += '</span>';
       html += '</div>';
     }
-    
+
     // 显示元数据完成情况
     html += '<div class="completion-stage-detail-item">';
     html += `<span class="completion-detail-label">元数据：</span>`;
@@ -1497,13 +1566,12 @@ export function renderCompletionView(markdown: string, container: HTMLElement): 
     }
     html += '</div>';
     html += '</div>';
-    
+
     html += '</div>';
   });
-  
+
   html += '</div>';
   html += '</div>';
-  
+
   container.innerHTML = html;
 }
-
