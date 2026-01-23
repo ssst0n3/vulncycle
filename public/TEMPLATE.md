@@ -13,8 +13,8 @@ changelog:
 | Item | Details | Note |
 |---|---|---|
 | Project                     | TODO: [link]() |
-| Confirm Link                | TODO: [link]() |
 | ID                          | TODO: CVE-0000-0000 |
+| Confirm Link                | TODO: [link]() |
 | Vuln's Author               | TODO: author@org |
 | CVSS                        | TODO: 0.0 CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:L |
 | Exploits                    | TODO: [exp1]()<br>[exp2]() |

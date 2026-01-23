@@ -1231,14 +1231,56 @@ function calculateStageCompletion(stage: LifecycleStage): StageCompletion {
   let completion = 0;
   let totalSubsections = 0;
   let completedSubsections = 0;
+  let handledByBasicInfoTable = false;
 
-  if (subsections.length > 0) {
+  // 基本信息：根据表格行的填充情况计算完成度（含 TODO 判定）
+  if (isBasicInfoStage && hasContent) {
+    const lines = content.split('\n');
+    const tableLines: string[] = [];
+    let inTable = false;
+
+    for (const line of lines) {
+      if (/^\s*\|.*\|\s*$/.test(line)) {
+        tableLines.push(line);
+        inTable = true;
+      } else if (inTable) {
+        // 表格结束
+        break;
+      }
+    }
+
+    const tableRows = tableLines.map(line =>
+      line
+        .split('|')
+        .slice(1, -1)
+        .map(cell => cell.trim())
+    );
+    const isSeparatorRow = (cells: string[]): boolean =>
+      cells.length > 0 && cells.every(cell => /^:?-{3,}:?$/.test(cell));
+
+    // 过滤表头和分隔行，仅保留数据行
+    const dataRows =
+      tableRows.length >= 2 && isSeparatorRow(tableRows[1]) ? tableRows.slice(2) : tableRows;
+
+    if (dataRows.length > 0) {
+      totalSubsections = dataRows.length;
+      completedSubsections = dataRows.filter(row => {
+        if (row.length === 0) return false;
+        return row.every(cell => cell.trim() !== '' && !/TODO/i.test(cell));
+      }).length;
+
+      completion = Math.round((completedSubsections / totalSubsections) * 100);
+      handledByBasicInfoTable = true;
+    }
+  }
+
+  if (!handledByBasicInfoTable && subsections.length > 0) {
     // 有子章节：根据子章节完成度计算
     totalSubsections = subsections.length;
     completedSubsections = subsections.filter(s => s.isComplete).length;
     completion =
       totalSubsections > 0 ? Math.round((completedSubsections / totalSubsections) * 100) : 0;
-  } else {
+  } else if (!handledByBasicInfoTable) {
     // 没有子章节：检查整个内容是否包含TODO
     if (hasContent) {
       const hasTodo = /TODO|todo|待办|待完成|待处理|待修改|待填写/i.test(content);
