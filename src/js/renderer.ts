@@ -1145,6 +1145,8 @@ interface Subsection {
   isComplete: boolean; // 是否完成（不包含TODO）
 }
 
+const TODO_REGEX = /TODO:/i;
+
 // 解析章节的子章节
 function parseSubsections(content: string): Subsection[] {
   const subsections: Subsection[] = [];
@@ -1162,7 +1164,7 @@ function parseSubsections(content: string): Subsection[] {
       if (currentSubsection) {
         const subsectionContent = currentSubsection.contentLines.join('\n').trim();
         // 检查是否包含TODO（不区分大小写）
-        const hasTodo = /TODO|todo|待办|待完成|待处理|待修改|待填写/i.test(subsectionContent);
+        const hasTodo = TODO_REGEX.test(subsectionContent);
         subsections.push({
           title: currentSubsection.title,
           level: currentSubsection.level,
@@ -1191,7 +1193,7 @@ function parseSubsections(content: string): Subsection[] {
   // 保存最后一个子章节
   if (currentSubsection) {
     const subsectionContent = currentSubsection.contentLines.join('\n').trim();
-    const hasTodo = /TODO|todo|待办|待完成|待处理|待修改|待填写/i.test(subsectionContent);
+    const hasTodo = TODO_REGEX.test(subsectionContent);
     subsections.push({
       title: currentSubsection.title,
       level: currentSubsection.level,
@@ -1212,6 +1214,7 @@ interface StageCompletion {
   hasMetadata: boolean;
   metadataComplete: boolean;
   subsections: Subsection[]; // 子章节列表
+  todos: Array<{ location: string; text: string }>;
   details: {
     totalSubsections: number;
     completedSubsections: number;
@@ -1232,6 +1235,7 @@ function calculateStageCompletion(stage: LifecycleStage): StageCompletion {
   let totalSubsections = 0;
   let completedSubsections = 0;
   let handledByBasicInfoTable = false;
+  const todos: Array<{ location: string; text: string }> = [];
 
   // 基本信息：根据表格行的填充情况计算完成度（含 TODO 判定）
   if (isBasicInfoStage && hasContent) {
@@ -1266,8 +1270,25 @@ function calculateStageCompletion(stage: LifecycleStage): StageCompletion {
       totalSubsections = dataRows.length;
       completedSubsections = dataRows.filter(row => {
         if (row.length === 0) return false;
-        return row.every(cell => cell.trim() !== '' && !/TODO/i.test(cell));
+        return row.every(cell => cell.trim() !== '' && !TODO_REGEX.test(cell));
       }).length;
+
+      // 收集表格 TODO 项
+      dataRows.forEach(row => {
+        const itemName = row[0] ?? 'Item';
+        const columns = ['Details', 'Note'];
+        row.forEach((cell, idx) => {
+          const colName = columns[idx] ?? `Col${idx + 1}`;
+          const isEmpty = cell.trim() === '';
+          const hasTodo = TODO_REGEX.test(cell);
+          if (isEmpty || hasTodo) {
+            todos.push({
+              location: `${itemName} - ${colName}`,
+              text: isEmpty ? '<empty>' : cell,
+            });
+          }
+        });
+      });
 
       completion = Math.round((completedSubsections / totalSubsections) * 100);
       handledByBasicInfoTable = true;
@@ -1280,10 +1301,28 @@ function calculateStageCompletion(stage: LifecycleStage): StageCompletion {
     completedSubsections = subsections.filter(s => s.isComplete).length;
     completion =
       totalSubsections > 0 ? Math.round((completedSubsections / totalSubsections) * 100) : 0;
+
+    // 收集子章节中的 TODO 行
+    subsections.forEach(subsection => {
+      if (!subsection.isComplete) {
+        subsection.content.split('\n').forEach(line => {
+          if (TODO_REGEX.test(line)) {
+            todos.push({ location: `${stage.title} - ${subsection.title}`, text: line.trim() });
+          }
+        });
+      }
+    });
   } else if (!handledByBasicInfoTable) {
     // 没有子章节：检查整个内容是否包含TODO
     if (hasContent) {
-      const hasTodo = /TODO|todo|待办|待完成|待处理|待修改|待填写/i.test(content);
+      const hasTodo = TODO_REGEX.test(content);
+      if (hasTodo) {
+        content.split('\n').forEach(line => {
+          if (TODO_REGEX.test(line)) {
+            todos.push({ location: stage.title, text: line.trim() });
+          }
+        });
+      }
       completion = hasTodo ? 0 : 100;
     } else {
       completion = 0;
@@ -1454,6 +1493,7 @@ function calculateStageCompletion(stage: LifecycleStage): StageCompletion {
     hasMetadata,
     metadataComplete,
     subsections,
+    todos,
     details: {
       totalSubsections,
       completedSubsections,
@@ -1512,6 +1552,7 @@ export function renderCompletionView(markdown: string, container: HTMLElement): 
         hasMetadata: false,
         metadataComplete: false,
         subsections: [],
+        todos: [],
         details: {
           totalSubsections: 0,
           completedSubsections: 0,
@@ -1609,6 +1650,22 @@ export function renderCompletionView(markdown: string, container: HTMLElement): 
       }
       html += '</div>';
     }
+
+    // TODO 详情
+    html += '<div class="completion-stage-detail-item">';
+    html += `<span class="completion-detail-label">TODO：</span>`;
+    if (completion.todos && completion.todos.length > 0) {
+      html += '<div class="completion-detail-value">';
+      html += '<div class="completion-todos">';
+      completion.todos.forEach(todo => {
+        html += `<div class="completion-todo-item"><span class="completion-todo-location">${escapeHtml(todo.location)}</span>: <span class="completion-todo-text">${escapeHtml(todo.text)}</span></div>`;
+      });
+      html += '</div>';
+      html += '</div>';
+    } else {
+      html += '<span class="completion-detail-value complete">无 TODO</span>';
+    }
+    html += '</div>';
     html += '</div>';
 
     html += '</div>';
