@@ -1,4 +1,4 @@
-import { EditorView, lineNumbers } from '@codemirror/view';
+import { EditorView, lineNumbers, KeyBinding } from '@codemirror/view';
 import { EditorState, Extension } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
 import { oneDark } from '@codemirror/theme-one-dark';
@@ -14,6 +14,7 @@ export interface EditorOptions {
   lineWrapping?: boolean;
   autofocus?: boolean;
   onUpdate?: (view: EditorView) => void;
+  onSave?: (view: EditorView) => void;
 }
 
 // Markdown 标题折叠服务
@@ -22,22 +23,22 @@ function markdownHeadingFoldService(state: EditorState, start: number, end: numb
   const doc = state.doc;
   const startLine = doc.lineAt(start);
   const lineText = startLine.text;
-  
+
   // 检测标题行：以 # 开头，后跟空格和文本
   const headingMatch = lineText.match(/^(#{1,6})\s+(.+)$/);
   if (!headingMatch) {
     return null;
   }
-  
+
   const headingLevel = headingMatch[1].length; // 标题级别（1-6）
   const totalLines = doc.lines;
-  
+
   // 从下一行开始查找，直到找到同级或更高级标题，或文档结束
   let endLine = startLine.number;
   for (let i = startLine.number + 1; i <= totalLines; i++) {
     const currentLine = doc.line(i);
     const currentLineText = currentLine.text;
-    
+
     // 检测标题行
     const currentHeadingMatch = currentLineText.match(/^(#{1,6})\s+/);
     if (currentHeadingMatch) {
@@ -48,43 +49,55 @@ function markdownHeadingFoldService(state: EditorState, start: number, end: numb
         break;
       }
     }
-    
+
     // 如果到达文档末尾，折叠到最后一行
     if (i === totalLines) {
       endLine = totalLines;
       break;
     }
   }
-  
+
   // 如果没有找到结束位置，折叠到文档末尾
   if (endLine === startLine.number) {
     endLine = totalLines;
   }
-  
+
   // 如果只有一行，无法折叠
   if (endLine <= startLine.number) {
     return null;
   }
-  
+
   const startPos = startLine.to;
   const endLineObj = doc.line(endLine);
   const endPos = endLineObj.to;
-  
+
   return { from: startPos, to: endPos };
 }
 
 // 初始化 CodeMirror 6 编辑器
-export function initEditor(
-  parentElement: HTMLElement,
-  options: EditorOptions = {}
-): EditorView {
+export function initEditor(parentElement: HTMLElement, options: EditorOptions = {}): EditorView {
   const {
     theme = 'dark',
     lineNumbers: showLineNumbers = true,
     lineWrapping: enableLineWrapping = true,
     autofocus: enableAutofocus = true,
     onUpdate,
+    onSave,
   } = options;
+
+  // 自定义保存命令 - 定义在函数内部以访问 options
+  const saveKeyBinding: KeyBinding = {
+    key: 'Mod-s',
+    run: (view: EditorView) => {
+      // 阻止默认的浏览器保存行为
+      // 如果提供了 onSave 回调，则调用它
+      if (typeof onSave === 'function') {
+        onSave(view);
+      }
+      // 返回 true 表示命令已处理
+      return true;
+    },
+  };
 
   const extensions: Extension[] = [
     markdown(),
@@ -96,7 +109,7 @@ export function initEditor(
       openText: '▾',
       closedText: '▸',
     }),
-    keymap.of([...historyKeymap, ...defaultKeymap, ...foldKeymap]),
+    keymap.of([...historyKeymap, ...defaultKeymap, ...foldKeymap, saveKeyBinding]),
     EditorView.theme({
       '&': {
         height: '100%',
@@ -196,7 +209,7 @@ export function initEditor(
   // 添加更新监听器
   if (onUpdate) {
     extensions.push(
-      EditorView.updateListener.of((update) => {
+      EditorView.updateListener.of(update => {
         if (update.docChanged) {
           onUpdate(update.view);
         }
@@ -220,4 +233,3 @@ export function initEditor(
 
   return view;
 }
-

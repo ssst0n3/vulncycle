@@ -42,10 +42,10 @@ function saveTimelineVisibility(visible: boolean): void {
 function applyTimelineVisibility(): void {
   const previewContent = document.getElementById('preview-content');
   if (!previewContent) return;
-  
+
   const lifecycleContainer = previewContent.querySelector('.lifecycle-container');
   if (!lifecycleContainer) return;
-  
+
   if (timelineVisible) {
     lifecycleContainer.classList.remove('timeline-hidden');
   } else {
@@ -55,9 +55,11 @@ function applyTimelineVisibility(): void {
 
 // 更新时间轴按钮的显示状态
 function updateTimelineToggleButton(): void {
-  const timelineToggleBtn = document.getElementById('timeline-toggle-btn') as HTMLButtonElement | null;
+  const timelineToggleBtn = document.getElementById(
+    'timeline-toggle-btn'
+  ) as HTMLButtonElement | null;
   if (!timelineToggleBtn) return;
-  
+
   if (timelineVisible) {
     timelineToggleBtn.classList.add('active');
     timelineToggleBtn.title = '隐藏时间轴';
@@ -69,9 +71,11 @@ function updateTimelineToggleButton(): void {
 
 // 更新时间轴控制按钮的可见性（仅在生命周期视图显示）
 function updateTimelineToggleVisibility(): void {
-  const timelineToggleBtn = document.getElementById('timeline-toggle-btn') as HTMLButtonElement | null;
+  const timelineToggleBtn = document.getElementById(
+    'timeline-toggle-btn'
+  ) as HTMLButtonElement | null;
   if (!timelineToggleBtn) return;
-  
+
   if (currentView === 'lifecycle') {
     timelineToggleBtn.style.display = 'flex';
   } else {
@@ -96,36 +100,36 @@ function getSubsectionKey(subsection: Element): string {
   // 查找最近的 lifecycle-stage 父元素
   const stage = subsection.closest('.lifecycle-stage');
   if (!stage) return '';
-  
+
   const stageKey = getLifecycleStageKey(stage);
-  
+
   // 在该 stage 中找到这个 subsection 的索引
   const subsections = Array.from(stage.querySelectorAll('.stage-subsection'));
   const index = subsections.indexOf(subsection);
-  
+
   return `${stageKey}:subsection-${index}`;
 }
 
 function captureLifecycleState(container: HTMLElement): LifecycleViewState {
   const expandedStageKeys = new Set<string>();
   const expandedSubsectionKeys = new Set<string>();
-  
+
   // 捕获主章节状态
   const stageElements = container.querySelectorAll('.lifecycle-stage.expanded');
-  stageElements.forEach((stage) => {
+  stageElements.forEach(stage => {
     const key = getLifecycleStageKey(stage);
     expandedStageKeys.add(key);
   });
-  
+
   // 捕获子章节状态
   const subsectionElements = container.querySelectorAll('.stage-subsection.expanded');
-  subsectionElements.forEach((subsection) => {
+  subsectionElements.forEach(subsection => {
     const key = getSubsectionKey(subsection);
     if (key) {
       expandedSubsectionKeys.add(key);
     }
   });
-  
+
   return {
     expandedStageKeys,
     expandedSubsectionKeys,
@@ -136,7 +140,7 @@ function captureLifecycleState(container: HTMLElement): LifecycleViewState {
 function restoreLifecycleState(container: HTMLElement, state: LifecycleViewState): void {
   // 恢复主章节状态
   const stageElements = container.querySelectorAll('.lifecycle-stage');
-  stageElements.forEach((stage) => {
+  stageElements.forEach(stage => {
     const key = getLifecycleStageKey(stage);
     if (state.expandedStageKeys.has(key)) {
       stage.classList.remove('collapsed');
@@ -147,10 +151,10 @@ function restoreLifecycleState(container: HTMLElement, state: LifecycleViewState
       icon.textContent = stage.classList.contains('collapsed') ? '▼' : '▲';
     }
   });
-  
+
   // 恢复子章节状态
   const subsectionElements = container.querySelectorAll('.stage-subsection');
-  subsectionElements.forEach((subsection) => {
+  subsectionElements.forEach(subsection => {
     const key = getSubsectionKey(subsection);
     if (key) {
       if (state.expandedSubsectionKeys.has(key)) {
@@ -163,7 +167,7 @@ function restoreLifecycleState(container: HTMLElement, state: LifecycleViewState
       }
     }
   });
-  
+
   container.scrollTop = state.scrollTop;
 }
 
@@ -196,7 +200,7 @@ function renderCurrentView(markdown: string, container: HTMLElement): void {
   } else {
     container.scrollTop = initialScrollTop;
   }
-  
+
   // 应用时间轴显示状态（仅在生命周期视图）
   if (currentView === 'lifecycle') {
     applyTimelineVisibility();
@@ -224,12 +228,20 @@ function initApp(): void {
     }, 300); // 防抖，300ms 延迟
   };
 
-  // 初始化编辑器（传入更新监听器）
+  // 保存功能回调
+  const saveContent = (view: EditorView) => {
+    const content = view.state.doc.toString();
+    storageManager.manualSave(content);
+    showSaveNotification('已保存');
+  };
+
+  // 初始化编辑器（传入更新监听器和保存回调）
   const editor = initEditor(editorContainer, {
     onUpdate: (view: EditorView) => {
       const markdown = view.state.doc.toString();
       debouncedUpdate(markdown);
     },
+    onSave: saveContent,
   });
 
   // 初始渲染
@@ -252,7 +264,7 @@ function initApp(): void {
 
   // 初始化全屏功能
   initFullscreen();
-  
+
   // 初始化时间轴控制功能
   initTimelineToggle();
 }
@@ -272,7 +284,7 @@ function initViewSwitcher(editor: EditorView, previewContent: HTMLElement): void
 
   const switchView = (viewType: ViewType) => {
     currentView = viewType;
-    
+
     // 更新按钮状态
     lifecycleBtn.classList.toggle('active', viewType === 'lifecycle');
     exploitabilityBtn.classList.toggle('active', viewType === 'exploitability');
@@ -286,7 +298,7 @@ function initViewSwitcher(editor: EditorView, previewContent: HTMLElement): void
     // 重新渲染当前视图
     const markdown = editor.state.doc.toString();
     renderCurrentView(markdown, previewContent);
-    
+
     // 应用时间轴显示状态
     applyTimelineVisibility();
   };
@@ -299,13 +311,10 @@ function initViewSwitcher(editor: EditorView, previewContent: HTMLElement): void
 }
 
 // 加载模板
-async function loadTemplate(
-  editor: EditorView,
-  previewContent: HTMLElement
-): Promise<void> {
+async function loadTemplate(editor: EditorView, previewContent: HTMLElement): Promise<void> {
   // 优先加载已保存的内容
   const savedContent = storageManager.loadFromLocalStorage();
-  
+
   if (savedContent) {
     // 如果有已保存的内容，使用已保存的内容
     editor.dispatch({
@@ -341,7 +350,7 @@ async function loadTemplate(
 
 // 初始化章节折叠/展开功能
 function initStageToggle(previewContent: HTMLElement): void {
-  previewContent.addEventListener('click', (event) => {
+  previewContent.addEventListener('click', event => {
     const target = event.target as HTMLElement | null;
     const subsectionHeader = target?.closest('.stage-subsection-header');
     if (subsectionHeader) {
@@ -467,7 +476,7 @@ function initHistoryModal(editor: EditorView, previewContent: HTMLElement): void
       return;
     }
 
-    entries.forEach((entry) => {
+    entries.forEach(entry => {
       const item = document.createElement('button');
       item.type = 'button';
       item.className = 'history-item';
@@ -489,7 +498,7 @@ function initHistoryModal(editor: EditorView, previewContent: HTMLElement): void
 
   const highlightSelected = (id: string) => {
     const items = listContainer.querySelectorAll('.history-item');
-    items.forEach((item) => {
+    items.forEach(item => {
       const match = (item as HTMLElement).dataset.historyId === id;
       item.classList.toggle('active', match);
     });
@@ -503,7 +512,7 @@ function initHistoryModal(editor: EditorView, previewContent: HTMLElement): void
   };
 
   historyBtn.addEventListener('click', openModal);
-  closeTargets.forEach((node) => node.addEventListener('click', closeModal));
+  closeTargets.forEach(node => node.addEventListener('click', closeModal));
 
   restoreBtn.addEventListener('click', () => {
     if (!selectedEntry) return;
@@ -624,8 +633,8 @@ function buildUnifiedDiff(current: string, target: string): DiffLine[] {
     { type: 'header', content: '+++ 选中版本' },
   ];
 
-  const removedCount = diffBody.filter((line) => line.type !== 'add').length;
-  const addedCount = diffBody.filter((line) => line.type !== 'remove').length;
+  const removedCount = diffBody.filter(line => line.type !== 'add').length;
+  const addedCount = diffBody.filter(line => line.type !== 'remove').length;
   const hunkLine: DiffLine = {
     type: 'hunk',
     content: `@@ -1,${Math.max(removedCount, 0)} +1,${Math.max(addedCount, 0)} @@`,
@@ -722,12 +731,12 @@ function initFullscreen(): void {
   fullscreenBtn.addEventListener('click', () => {
     if (!document.fullscreenElement) {
       // 进入全屏
-      editorContainer.requestFullscreen().catch((err) => {
+      editorContainer.requestFullscreen().catch(err => {
         console.error('Error attempting to enable fullscreen:', err);
       });
     } else {
       // 退出全屏
-      document.exitFullscreen().catch((err) => {
+      document.exitFullscreen().catch(err => {
         console.error('Error attempting to exit fullscreen:', err);
       });
     }
@@ -747,34 +756,36 @@ function initFullscreen(): void {
 
 // 初始化时间轴控制功能
 function initTimelineToggle(): void {
-  const timelineToggleBtn = document.getElementById('timeline-toggle-btn') as HTMLButtonElement | null;
-  
+  const timelineToggleBtn = document.getElementById(
+    'timeline-toggle-btn'
+  ) as HTMLButtonElement | null;
+
   if (!timelineToggleBtn) {
     console.error('Timeline toggle button not found');
     return;
   }
-  
+
   // 从 localStorage 加载时间轴显示状态
   timelineVisible = loadTimelineVisibility();
-  
+
   // 初始化按钮显示状态
   updateTimelineToggleButton();
   updateTimelineToggleVisibility();
-  
+
   // 应用时间轴显示状态
   applyTimelineVisibility();
-  
+
   // 添加按钮点击事件监听
   timelineToggleBtn.addEventListener('click', () => {
     // 切换状态
     timelineVisible = !timelineVisible;
-    
+
     // 保存到 localStorage
     saveTimelineVisibility(timelineVisible);
-    
+
     // 更新按钮状态
     updateTimelineToggleButton();
-    
+
     // 应用到DOM
     applyTimelineVisibility();
   });
@@ -782,4 +793,3 @@ function initTimelineToggle(): void {
 
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', initApp);
-
