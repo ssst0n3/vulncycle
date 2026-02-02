@@ -353,7 +353,9 @@ function initStageToggle(previewContent: HTMLElement, editor: EditorView): void 
   previewContent.addEventListener('click', event => {
     const target = event.target as HTMLElement | null;
 
-    const anchorBtn = target?.closest('.stage-anchor-btn') as HTMLButtonElement | null;
+    const anchorBtn = target?.closest(
+      '.stage-anchor-btn, .stage-heading-anchor-btn'
+    ) as HTMLButtonElement | null;
     if (anchorBtn) {
       const lineValue = anchorBtn.dataset.line;
       if (lineValue) {

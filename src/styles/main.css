@@ -1309,6 +1309,25 @@ header h1 {
   color: var(--color-primary);
 }
 
+.stage-heading-anchor-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8em;
+  padding: 0 4px;
+  margin-left: 6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.stage-heading-anchor-btn:hover {
+  color: var(--color-primary);
+  background: rgba(102, 126, 234, 0.08);
+}
+
 .stage-toggle-icon {
   font-size: 0.75em;
   color: var(--text-muted);

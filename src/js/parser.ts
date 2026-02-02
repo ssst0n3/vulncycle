@@ -20,6 +20,14 @@ export interface LifecycleStage {
   content: string;
   metadata?: StageMetadata; // 元数据(可选)
   startLine: number | null; // Markdown 起始行号（1-based）
+  headings?: StageHeading[]; // 子标题及行号
+}
+
+// 子标题信息
+export interface StageHeading {
+  title: string;
+  level: number; // 1-6
+  line: number; // 1-based 行号
 }
 
 // 解析 Markdown 并提取生命周期阶段
@@ -29,6 +37,7 @@ export function parseLifecycleStages(markdown: string): LifecycleStage[] {
   let currentStage: { title: string; stageNum: number | null; startLine: number | null } | null =
     null;
   let currentContent: string[] = [];
+  let currentHeadings: StageHeading[] = [];
   let inFrontMatter = false;
 
   for (let i = 0; i < lines.length; i++) {
@@ -56,6 +65,7 @@ export function parseLifecycleStages(markdown: string): LifecycleStage[] {
           content,
           metadata: metadata.items.length > 0 ? metadata : undefined,
           startLine: currentStage.startLine,
+          headings: currentHeadings,
         });
       }
 
@@ -64,6 +74,7 @@ export function parseLifecycleStages(markdown: string): LifecycleStage[] {
       const stageNum = extractStageNumber(title);
       currentStage = { title, stageNum, startLine: i + 1 };
       currentContent = [];
+      currentHeadings = [];
       continue;
     }
 
@@ -71,6 +82,18 @@ export function parseLifecycleStages(markdown: string): LifecycleStage[] {
     const h1Match = line.match(/^#\s+(.+)$/);
     if (h1Match && !currentStage) {
       continue;
+    }
+
+    if (currentStage) {
+      const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+      if (headingMatch) {
+        const level = headingMatch[1].length;
+        currentHeadings.push({
+          title: headingMatch[2].trim(),
+          level,
+          line: i + 1,
+        });
+      }
     }
 
     // 收集内容
@@ -89,6 +112,7 @@ export function parseLifecycleStages(markdown: string): LifecycleStage[] {
       content,
       metadata: metadata.items.length > 0 ? metadata : undefined,
       startLine: currentStage.startLine,
+      headings: currentHeadings,
     });
   }
 

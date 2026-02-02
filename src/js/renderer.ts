@@ -7,6 +7,7 @@ import {
   type LifecycleStage,
   type StageMetadata,
   type MetadataItem,
+  type StageHeading,
 } from './parser.js';
 
 // HTML 转义函数
@@ -192,6 +193,64 @@ function extractSummary(content: string, maxLength: number = 100): string {
 
 const subsectionHeadingSelector = 'h3, h4, h5, h6';
 
+function normalizeHeadingText(text: string): string {
+  return text.trim().replace(/\s+/g, ' ');
+}
+
+function applyHeadingAnchors(body: HTMLElement, headings?: StageHeading[]): void {
+  // 清理旧的锚点
+  body.querySelectorAll('.stage-heading-anchor-btn').forEach(btn => btn.remove());
+
+  if (!headings || headings.length === 0) {
+    return;
+  }
+
+  const headingElements = Array.from(body.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6'));
+
+  let cursor = 0;
+  headingElements.forEach(el => {
+    if (cursor >= headings.length) {
+      return;
+    }
+
+    const level = Number(el.tagName.replace('H', ''));
+    const text = normalizeHeadingText(el.textContent || '');
+
+    // 找到与当前元素匹配的下一个标题数据（级别与文本均匹配）
+    let matchedIndex = -1;
+    for (let i = cursor; i < headings.length; i += 1) {
+      const heading = headings[i];
+      if (heading.level === level && normalizeHeadingText(heading.title) === text) {
+        matchedIndex = i;
+        break;
+      }
+    }
+
+    if (matchedIndex === -1) {
+      return;
+    }
+
+    const headingInfo = headings[matchedIndex];
+    cursor = matchedIndex + 1;
+
+    el.setAttribute('data-heading-title', headingInfo.title);
+
+    if (!headingInfo.line) {
+      return;
+    }
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'stage-heading-anchor-btn';
+    btn.title = '跳转到编辑器对应位置';
+    btn.dataset.line = String(headingInfo.line);
+    btn.textContent = '#';
+
+    // 将按钮插入到标题内，放在末尾
+    el.appendChild(btn);
+  });
+}
+
 function applyStageSubsectionsWithState(
   stageBody: HTMLElement,
   subsectionStates?: Map<string, boolean>
@@ -216,7 +275,8 @@ function applyStageSubsectionsWithState(
     existingSubsections.forEach(subsection => {
       const heading = subsection.querySelector(subsectionHeadingSelector);
       if (heading) {
-        const titleText = heading.textContent?.trim() || '';
+        const titleText =
+          heading.getAttribute('data-heading-title') || heading.textContent?.trim() || '';
         expandedSubsectionTitles.add(titleText);
       }
     });
@@ -296,6 +356,20 @@ function applyStageSubsections(stageBody: HTMLElement): void {
 function applyLifecycleSubsections(container: HTMLElement): void {
   const bodies = container.querySelectorAll<HTMLElement>('.stage-body');
   bodies.forEach(body => applyStageSubsectionsWithState(body));
+}
+
+function applyLifecycleHeadingAnchors(container: HTMLElement, timeNodes: TimeNode[]): void {
+  timeNodes.forEach((timeNode, nodeIndex) => {
+    timeNode.stages.forEach(({ stage }, stageIndex) => {
+      const stageElement = container.querySelector<HTMLElement>(
+        `.lifecycle-stage[data-node-index="${nodeIndex}"][data-stage-index="${stageIndex}"]`
+      );
+      if (!stageElement) return;
+      const body = stageElement.querySelector<HTMLElement>('.stage-body');
+      if (!body) return;
+      applyHeadingAnchors(body, stage.headings);
+    });
+  });
 }
 
 // 语言别名映射（将常见别名映射到 highlight.js 支持的语言）
@@ -741,7 +815,8 @@ export function updateLifecycleView(markdown: string, container: HTMLElement): b
       existingSubsections.forEach(subsection => {
         const heading = subsection.querySelector(subsectionHeadingSelector);
         if (heading) {
-          const titleText = heading.textContent?.trim() || '';
+          const titleText =
+            heading.getAttribute('data-heading-title') || heading.textContent?.trim() || '';
           const isExpanded = subsection.classList.contains('expanded');
           subsectionStates.set(titleText, isExpanded);
         }
@@ -752,6 +827,8 @@ export function updateLifecycleView(markdown: string, container: HTMLElement): b
       } else {
         body.innerHTML = '<p class="stage-empty">暂无内容</p>';
       }
+
+      applyHeadingAnchors(body, stage.headings);
 
       // 将状态传递给 applyStageSubsections
       applyStageSubsectionsWithState(body, subsectionStates);
@@ -771,6 +848,7 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
 
   const title = extractTitle(markdown);
   let stages = parseLifecycleStages(markdown);
+  let timeNodes: TimeNode[] = [];
 
   let html = '<div class="lifecycle-container">';
   html += `<h1 class="lifecycle-title">${escapeHtml(title)}</h1>`;
@@ -806,7 +884,7 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
     html += '</div>';
   } else {
     // 按时间分组阶段
-    const timeNodes = groupStagesByTime(stages);
+    timeNodes = groupStagesByTime(stages);
 
     html += '<div class="timeline-wrapper">';
     html += '<div class="timeline-container">';
@@ -916,6 +994,9 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
   html += '</div>';
   container.innerHTML = html;
   applyLifecycleSubsections(container);
+  if (timeNodes.length > 0) {
+    applyLifecycleHeadingAnchors(container, timeNodes);
+  }
 }
 
 // 解析漏洞利用阶段的内容
