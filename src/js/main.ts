@@ -10,7 +10,7 @@ import {
   updateLifecycleView,
 } from './renderer.js';
 import { storageManager, type HistoryEntry, type SaveStatus } from './storage.js';
-import type { EditorView } from '@codemirror/view';
+import { EditorView } from '@codemirror/view';
 
 // 视图类型
 type ViewType = 'lifecycle' | 'exploitability' | 'intelligence' | 'analysis' | 'completion';
@@ -364,7 +364,10 @@ function initStageToggle(previewContent: HTMLElement, editor: EditorView): void 
           const totalLines = editor.state.doc.lines;
           const clampedLine = Math.min(Math.max(1, lineNumber), totalLines);
           const line = editor.state.doc.line(clampedLine);
-          editor.dispatch({ selection: { anchor: line.from }, scrollIntoView: true });
+          editor.dispatch({
+            selection: { anchor: line.from },
+            effects: EditorView.scrollIntoView(line.from, { y: 'start', yMargin: 12 }),
+          });
         }
       }
       editor.focus();
