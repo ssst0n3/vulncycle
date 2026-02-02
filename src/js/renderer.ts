@@ -673,6 +673,25 @@ export function updateLifecycleView(markdown: string, container: HTMLElement): b
         headerTitle.textContent = stage.title;
       }
 
+      const anchorBtn = stageElement.querySelector<HTMLButtonElement>('.stage-anchor-btn');
+      const headerLeft = stageElement.querySelector('.stage-header-left');
+      if (stage.startLine) {
+        const lineStr = String(stage.startLine);
+        if (anchorBtn) {
+          anchorBtn.dataset.line = lineStr;
+        } else if (headerLeft) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'stage-anchor-btn';
+          btn.title = '跳转到编辑器对应位置';
+          btn.dataset.line = lineStr;
+          btn.textContent = '#';
+          headerLeft.appendChild(btn);
+        }
+      } else if (anchorBtn) {
+        anchorBtn.dataset.line = '';
+      }
+
       const body = stageElement.querySelector<HTMLElement>('.stage-body');
       if (!body) {
         return false;
@@ -845,6 +864,7 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
         const stageNum = stage.stageNum ?? '?';
         const content = stage.content.trim();
         const summary = extractSummary(content);
+        const lineAttr = stage.startLine ? ` data-line="${stage.startLine}"` : '';
 
         html += `<div class="lifecycle-stage collapsed" data-stage="${stageNum}" data-node-index="${nodeIndex}" data-stage-index="${stageIndex}">`;
 
@@ -855,6 +875,7 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
         html += '<div class="stage-header-left">';
         html += `<div class="stage-number-badge" data-stage="${stageNum}">${stageNum}</div>`;
         html += `<span class="stage-header-title">${escapeHtml(stage.title)}</span>`;
+        html += `<button class="stage-anchor-btn" type="button"${lineAttr} title="跳转到编辑器对应位置">#</button>`;
         html += '</div>';
 
         // 元数据区域（显示在标题右侧）

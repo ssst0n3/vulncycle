@@ -19,13 +19,15 @@ export interface LifecycleStage {
   stageNum: number | null;
   content: string;
   metadata?: StageMetadata; // 元数据(可选)
+  startLine: number | null; // Markdown 起始行号（1-based）
 }
 
 // 解析 Markdown 并提取生命周期阶段
 export function parseLifecycleStages(markdown: string): LifecycleStage[] {
   const stages: LifecycleStage[] = [];
   const lines = markdown.split('\n');
-  let currentStage: { title: string; stageNum: number | null } | null = null;
+  let currentStage: { title: string; stageNum: number | null; startLine: number | null } | null =
+    null;
   let currentContent: string[] = [];
   let inFrontMatter = false;
 
@@ -53,13 +55,14 @@ export function parseLifecycleStages(markdown: string): LifecycleStage[] {
           stageNum: currentStage.stageNum,
           content,
           metadata: metadata.items.length > 0 ? metadata : undefined,
+          startLine: currentStage.startLine,
         });
       }
 
       // 开始新阶段
       const title = h2Match[1].trim();
       const stageNum = extractStageNumber(title);
-      currentStage = { title, stageNum };
+      currentStage = { title, stageNum, startLine: i + 1 };
       currentContent = [];
       continue;
     }
@@ -85,6 +88,7 @@ export function parseLifecycleStages(markdown: string): LifecycleStage[] {
       stageNum: currentStage.stageNum,
       content,
       metadata: metadata.items.length > 0 ? metadata : undefined,
+      startLine: currentStage.startLine,
     });
   }
 
@@ -115,68 +119,79 @@ export function extractTitle(markdown: string): string {
 export function extractStageMetadata(content: string): StageMetadata {
   const items: MetadataItem[] = [];
   const lines = content.split('\n');
-  
+
   // 记录章节内容的前100个字符，用于识别是哪个章节
   const contentPreview = content.substring(0, 100).replace(/\n/g, ' ');
   console.log(`🔍 [Parser] 开始提取元数据 - 章节预览: "${contentPreview}..."`);
-  
+
   // 时间相关的关键字
   const timeKeywords = ['时间', 'date', 'time'];
   // 人员相关的关键字
-  const personKeywords = ['者', '人员', '研究者', '提交者', '审查者', '开发者', '发现者', 'author', 'researcher', 'developer'];
+  const personKeywords = [
+    '者',
+    '人员',
+    '研究者',
+    '提交者',
+    '审查者',
+    '开发者',
+    '发现者',
+    'author',
+    'researcher',
+    'developer',
+  ];
   // 版本相关的关键字
   const versionKeywords = ['版本', 'version', 'release'];
   // 链接相关的关键字
   const linkKeywords = ['PR', 'Commit', 'CVE', 'CWE', 'URL', 'Link', '链接', '地址'];
-  
+
   // 用于记录已处理的行,避免重复提取
   const processedLines = new Set<number>();
-  
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    
+
     // 遇到子标题（### 或更低级别）时停止提取，只提取章节开头区域的元数据
     if (line.match(/^#{3,}\s+/)) {
       break;
     }
-    
+
     // 跳过已处理的行
     if (processedLines.has(i)) {
       continue;
     }
-    
+
     // 匹配列表项格式：- **字段名**：值
     // 支持中文冒号和英文冒号
     const match = line.match(/^-\s*\*\*([^*]+)\*\*[：:]\s*(.+)$/);
     if (!match) {
       continue;
     }
-    
+
     const label = match[1].trim();
     let value = match[2].trim();
-    
+
     // 跳过空值或占位符
     if (!value || value === '...' || value === 'N/A' || value === 'TBD') {
       continue;
     }
-    
+
     // 处理可能的括号内容(如"需要修改")
     if (value.includes('需要修改') || value.includes('待填写')) {
       continue; // 跳过未填写的字段
     }
-    
+
     // 检查是否为 Markdown 链接格式 [text](url)
     const isMarkdownLink = /^\[.+\]\(.+\)$/.test(value);
-    
+
     // 如果不是 Markdown 链接，移除括号内的注释内容（如 "2024-01-01 (待修改)"）
     if (!isMarkdownLink) {
       value = value.replace(/\s*\([^)]*\)\s*$/, '').trim();
     }
-    
+
     // 判断字段类型
     let type: MetadataItem['type'] = 'text';
     let icon: string | undefined;
-    
+
     // 检查是否为时间类型
     if (timeKeywords.some(keyword => label.includes(keyword))) {
       type = 'time';
@@ -193,11 +208,15 @@ export function extractStageMetadata(content: string): StageMetadata {
       icon = '📦';
     }
     // 检查是否为链接类型
-    else if (linkKeywords.some(keyword => label.includes(keyword)) || value.startsWith('http') || value.includes('://')) {
+    else if (
+      linkKeywords.some(keyword => label.includes(keyword)) ||
+      value.startsWith('http') ||
+      value.includes('://')
+    ) {
       type = 'link';
       icon = '🔗';
     }
-    
+
     // 添加到元数据列表
     items.push({
       label,
@@ -205,23 +224,24 @@ export function extractStageMetadata(content: string): StageMetadata {
       type,
       icon,
     });
-    
+
     console.log(`  ✓ 提取元数据项 #${items.length}: [${type}] ${label} = "${value}" ${icon || ''}`);
-    
+
     processedLines.add(i);
   }
-  
+
   console.log(`✅ [Parser] 提取完成 - 共找到 ${items.length} 个元数据项`);
   if (items.length > 0) {
-    console.table(items.map((item, idx) => ({
-      '序号': idx + 1,
-      '标签': item.label,
-      '值': item.value.length > 30 ? item.value.substring(0, 30) + '...' : item.value,
-      '类型': item.type,
-      '图标': item.icon || '-'
-    })));
+    console.table(
+      items.map((item, idx) => ({
+        序号: idx + 1,
+        标签: item.label,
+        值: item.value.length > 30 ? item.value.substring(0, 30) + '...' : item.value,
+        类型: item.type,
+        图标: item.icon || '-',
+      }))
+    );
   }
-  
+
   return { items };
 }
-

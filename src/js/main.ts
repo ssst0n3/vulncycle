@@ -248,7 +248,7 @@ function initApp(): void {
   renderCurrentView(editor.state.doc.toString(), previewContent);
 
   // 初始化折叠/展开功能（事件委托）
-  initStageToggle(previewContent);
+  initStageToggle(previewContent, editor);
 
   // 初始化视图切换功能
   initViewSwitcher(editor, previewContent);
@@ -349,9 +349,27 @@ async function loadTemplate(editor: EditorView, previewContent: HTMLElement): Pr
 }
 
 // 初始化章节折叠/展开功能
-function initStageToggle(previewContent: HTMLElement): void {
+function initStageToggle(previewContent: HTMLElement, editor: EditorView): void {
   previewContent.addEventListener('click', event => {
     const target = event.target as HTMLElement | null;
+
+    const anchorBtn = target?.closest('.stage-anchor-btn') as HTMLButtonElement | null;
+    if (anchorBtn) {
+      const lineValue = anchorBtn.dataset.line;
+      if (lineValue) {
+        const lineNumber = Number(lineValue);
+        if (!Number.isNaN(lineNumber)) {
+          const totalLines = editor.state.doc.lines;
+          const clampedLine = Math.min(Math.max(1, lineNumber), totalLines);
+          const line = editor.state.doc.line(clampedLine);
+          editor.dispatch({ selection: { anchor: line.from }, scrollIntoView: true });
+        }
+      }
+      editor.focus();
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     const subsectionHeader = target?.closest('.stage-subsection-header');
     if (subsectionHeader) {
       const subsection = subsectionHeader.closest('.stage-subsection');
