@@ -345,7 +345,8 @@ async function loadTemplate(editor: EditorView, previewContent: HTMLElement): Pr
 
   // 如果没有已保存的内容，加载模板
   try {
-    const response = await fetch('/TEMPLATE.md');
+    const templateUrl = new URL('TEMPLATE.md', import.meta.env.BASE_URL).toString();
+    const response = await fetch(templateUrl);
     if (!response.ok) {
       throw new Error('Failed to load template');
     }
