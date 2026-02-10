@@ -1,5 +1,5 @@
 import { EditorView, lineNumbers, KeyBinding } from '@codemirror/view';
-import { EditorState, Extension, Range } from '@codemirror/state';
+import { EditorState, Extension } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
@@ -22,7 +22,7 @@ function markdownHeadingFoldService(
   state: EditorState,
   start: number,
   _end: number
-): Range<unknown> | null {
+): { from: number; to: number } | null {
   const doc = state.doc;
   const startLine = doc.lineAt(start);
   const lineText = startLine.text;

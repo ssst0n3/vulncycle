@@ -408,7 +408,6 @@ const marked = new Marked(
 marked.setOptions({
   breaks: true,
   gfm: true,
-  mangle: false,
 });
 
 const renderMarkdown = (markdown: string): string => {
