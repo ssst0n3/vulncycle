@@ -1,120 +1,256 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>VulnCycleInsight - 漏洞生命周期研究报告编辑器</title>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <header>
-            <h1>VulnCycleInsight</h1>
-            <p class="subtitle">基于生命周期的漏洞研究报告编辑器</p>
-        </header>
-        
-        <div class="editor-container" id="editor-container">
-            <!-- 左侧编辑器 -->
-            <div class="editor-panel" id="editor-panel">
-                <div class="panel-header">
-                    <h2>Markdown 编辑器</h2>
-                    <div class="panel-header-actions">
-                        <span id="save-status" class="save-status">未保存</span>
-                        <button id="history-btn" class="history-btn" title="历史版本">
-                            <span>历史版本</span>
-                        </button>
-                        <button id="save-btn" class="save-btn" title="保存到浏览器">
-                            <svg class="save-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                                <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                                <polyline points="7 3 7 8 15 8"></polyline>
-                            </svg>
-                            <span>保存</span>
-                        </button>
-                        <button id="download-btn" class="download-btn" title="下载文件">
-                            <svg class="save-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                <polyline points="7 10 12 15 17 10"></polyline>
-                                <line x1="12" y1="15" x2="12" y2="3"></line>
-                            </svg>
-                            <span>下载</span>
-                        </button>
-                        <button id="fullscreen-btn" class="fullscreen-btn" title="全屏/退出全屏">
-                            <svg class="fullscreen-icon fullscreen-enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
-                            </svg>
-                            <svg class="fullscreen-icon fullscreen-exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-                <div id="markdown-editor-container"></div>
+      <header>
+        <h1>VulnCycleInsight</h1>
+        <p class="subtitle">基于生命周期的漏洞研究报告编辑器</p>
+      </header>
+
+      <div class="editor-container" id="editor-container">
+        <!-- 左侧编辑器 -->
+        <div class="editor-panel" id="editor-panel">
+          <div class="panel-header">
+            <h2>Markdown 编辑器</h2>
+            <div class="panel-header-actions">
+              <span id="save-status" class="save-status">未保存</span>
+              <button id="github-settings-btn" class="history-btn" title="设置 / 云端存储">
+                <span>设置</span>
+              </button>
+              <button id="history-btn" class="history-btn" title="历史版本">
+                <span>历史版本</span>
+              </button>
+              <button id="save-btn" class="save-btn" title="保存到浏览器">
+                <svg
+                  class="save-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                  <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                  <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+                <span>保存</span>
+              </button>
+              <button id="download-btn" class="download-btn" title="下载文件">
+                <svg
+                  class="save-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="7 10 12 15 17 10"></polyline>
+                  <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                <span>下载</span>
+              </button>
+              <button id="fullscreen-btn" class="fullscreen-btn" title="全屏/退出全屏">
+                <svg
+                  class="fullscreen-icon fullscreen-enter"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"
+                  ></path>
+                </svg>
+                <svg
+                  class="fullscreen-icon fullscreen-exit"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"
+                  ></path>
+                </svg>
+              </button>
             </div>
-            
-            <!-- 右侧预览 -->
-            <div class="preview-panel">
-                <div class="panel-header">
-                    <div class="view-switcher">
-                        <button id="lifecycle-view-btn" class="view-btn active" data-view="lifecycle">
-                            <span>生命周期视图</span>
-                        </button>
-                        <button id="exploitability-view-btn" class="view-btn" data-view="exploitability">
-                            <span>可利用性视图</span>
-                        </button>
-                        <button id="intelligence-view-btn" class="view-btn" data-view="intelligence">
-                            <span>情报视图</span>
-                        </button>
-                        <button id="analysis-view-btn" class="view-btn" data-view="analysis">
-                            <span>漏洞原理视图</span>
-                        </button>
-                        <button id="completion-view-btn" class="view-btn" data-view="completion">
-                            <span>完成度</span>
-                        </button>
-                    </div>
-                    <div class="view-actions">
-                        <button id="timeline-toggle-btn" class="timeline-toggle-btn" title="显示/隐藏时间轴">
-                            <svg class="timeline-icon timeline-icon-visible" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                            <svg class="timeline-icon timeline-icon-hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                                <line x1="1" y1="1" x2="23" y2="23"></line>
-                            </svg>
-                            <span>时间轴</span>
-                        </button>
-                    </div>
-                </div>
-                <div id="preview-content" class="preview-content"></div>
-            </div>
+          </div>
+          <div id="markdown-editor-container"></div>
         </div>
+
+        <!-- 右侧预览 -->
+        <div class="preview-panel">
+          <div class="panel-header">
+            <div class="view-switcher">
+              <button id="lifecycle-view-btn" class="view-btn active" data-view="lifecycle">
+                <span>生命周期视图</span>
+              </button>
+              <button id="exploitability-view-btn" class="view-btn" data-view="exploitability">
+                <span>可利用性视图</span>
+              </button>
+              <button id="intelligence-view-btn" class="view-btn" data-view="intelligence">
+                <span>情报视图</span>
+              </button>
+              <button id="analysis-view-btn" class="view-btn" data-view="analysis">
+                <span>漏洞原理视图</span>
+              </button>
+              <button id="completion-view-btn" class="view-btn" data-view="completion">
+                <span>完成度</span>
+              </button>
+            </div>
+            <div class="view-actions">
+              <button id="timeline-toggle-btn" class="timeline-toggle-btn" title="显示/隐藏时间轴">
+                <svg
+                  class="timeline-icon timeline-icon-visible"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                <svg
+                  class="timeline-icon timeline-icon-hidden"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
+                  ></path>
+                  <line x1="1" y1="1" x2="23" y2="23"></line>
+                </svg>
+                <span>时间轴</span>
+              </button>
+            </div>
+          </div>
+          <div id="preview-content" class="preview-content"></div>
+        </div>
+      </div>
     </div>
 
     <!-- 历史版本弹窗 -->
     <div id="history-modal" class="history-modal hidden" aria-hidden="true">
-        <div class="history-modal-overlay" data-history-close></div>
-        <div class="history-modal-content" role="dialog" aria-modal="true" aria-labelledby="history-modal-title">
-            <div class="history-modal-header">
-                <h3 id="history-modal-title">历史版本</h3>
-                <button class="history-close-btn" data-history-close title="关闭">✕</button>
-            </div>
-            <div class="history-modal-body">
-                <div class="history-list">
-                    <div class="history-list-title">版本列表</div>
-                    <div id="history-list-items" class="history-list-items"></div>
-                </div>
-                <div class="history-diff">
-                    <div class="history-diff-title">与当前内容的差异</div>
-                    <pre id="history-diff-content" class="history-diff-content"></pre>
-                </div>
-            </div>
-            <div class="history-modal-footer">
-                <button id="history-restore-btn" class="history-restore-btn" disabled>恢复此版本</button>
-                <button class="history-cancel-btn" data-history-close>取消</button>
-            </div>
+      <div class="history-modal-overlay" data-history-close></div>
+      <div
+        class="history-modal-content"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="history-modal-title"
+      >
+        <div class="history-modal-header">
+          <h3 id="history-modal-title">历史版本</h3>
+          <button class="history-close-btn" data-history-close title="关闭">✕</button>
         </div>
+        <div class="history-modal-body">
+          <div class="history-list">
+            <div class="history-list-title">版本列表</div>
+            <div id="history-list-items" class="history-list-items"></div>
+          </div>
+          <div class="history-diff">
+            <div class="history-diff-title">与当前内容的差异</div>
+            <pre id="history-diff-content" class="history-diff-content"></pre>
+          </div>
+        </div>
+        <div class="history-modal-footer">
+          <button id="history-restore-btn" class="history-restore-btn" disabled>恢复此版本</button>
+          <button class="history-cancel-btn" data-history-close>取消</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 设置 / GitHub 云端存储弹窗 -->
+    <div id="github-modal" class="history-modal hidden" aria-hidden="true">
+      <div class="history-modal-overlay" data-github-close></div>
+      <div
+        class="history-modal-content github-modal-content"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="github-modal-title"
+      >
+        <div class="history-modal-header">
+          <h3 id="github-modal-title">设置 · 云端存储</h3>
+          <button class="history-close-btn" data-github-close title="关闭">✕</button>
+        </div>
+        <div class="github-modal-body">
+          <div class="github-card">
+            <div class="github-card-header">
+              <div class="github-title">
+                <span class="github-badge">GitHub</span>
+                <span>云端存储</span>
+              </div>
+              <div class="github-mode">
+                <label><input type="radio" name="github-mode" value="local" checked /> Local</label>
+                <label><input type="radio" name="github-mode" value="gist" /> Gist</label>
+                <label><input type="radio" name="github-mode" value="repo" /> Repo</label>
+              </div>
+            </div>
+            <div class="github-field-row">
+              <label class="github-label" for="github-token">PAT</label>
+              <input
+                id="github-token"
+                type="password"
+                placeholder="Fine-grained PAT (gist 或 repo contents)"
+              />
+              <label class="github-remember"
+                ><input id="github-remember" type="checkbox" /> 记住令牌（存浏览器）</label
+              >
+              <button id="github-clear-token" class="github-ghost-btn" type="button">清除</button>
+            </div>
+            <div class="github-hint">
+              使用最小权限 PAT：Gist 选择 gist；Repo 选择
+              contents（限目标仓库）。令牌仅用于当前浏览器。
+            </div>
+            <div id="github-gist-fields" class="github-subsection">
+              <div class="github-field-row">
+                <label class="github-label" for="github-gist-id">Gist ID</label>
+                <input id="github-gist-id" type="text" placeholder="留空则新建" />
+                <label class="github-label" for="github-gist-filename">文件名</label>
+                <input id="github-gist-filename" type="text" placeholder="reports/{{date}}.md" />
+              </div>
+            </div>
+            <div id="github-repo-fields" class="github-subsection">
+              <div class="github-field-row">
+                <label class="github-label" for="github-repo-owner">Owner</label>
+                <input id="github-repo-owner" type="text" placeholder="org 或用户名" />
+                <label class="github-label" for="github-repo-name">Repo</label>
+                <input id="github-repo-name" type="text" placeholder="repo" />
+                <label class="github-label" for="github-repo-branch">Branch</label>
+                <input id="github-repo-branch" type="text" placeholder="main" />
+              </div>
+              <div class="github-field-row">
+                <label class="github-label" for="github-repo-path">Path</label>
+                <input id="github-repo-path" type="text" placeholder="reports/{{date}}.md" />
+                <label class="github-label" for="github-commit-message">Commit</label>
+                <input
+                  id="github-commit-message"
+                  type="text"
+                  placeholder="chore: save report {{datetime}}"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="history-modal-footer github-modal-footer">
+          <div class="github-action-buttons">
+            <button id="github-save-btn" class="github-primary-btn" type="button">
+              保存到 GitHub
+            </button>
+            <button id="github-load-btn" class="github-secondary-btn" type="button">
+              从 GitHub 拉取
+            </button>
+          </div>
+          <div id="github-status" class="github-status">当前模式：Local</div>
+        </div>
+      </div>
     </div>
 
     <script type="module" src="/src/js/main.ts"></script>
-</body>
+  </body>
 </html>

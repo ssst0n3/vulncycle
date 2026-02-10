@@ -32,7 +32,10 @@ docker compose build
 docker compose exec app sh
 ```
 
-服务启动后访问 `http://localhost:3000`
+服务启动后访问实际分配的端口：
+
+- 本地开发：默认使用随机端口；如需固定端口可设置环境变量 `PORT`（例如 `PORT=5173 npm run dev`）
+- Docker：宿主机会随机分配端口，使用 `docker compose ps` 或 `docker compose logs -f` 查看实际映射，容器内监听端口固定为 5173
 
 ### 本地开发方式（不使用容器）
 
@@ -79,7 +82,6 @@ docker compose exec app sh
 docker compose up -d --build
 ```
 
-
 ## 使用说明
 
 在左侧编辑器中输入 Markdown 内容，系统会自动识别以下生命周期阶段：
@@ -93,7 +95,6 @@ docker compose up -d --build
 7. **漏洞情报**
 8. **漏洞利用**
 9. **防护**
-
 
 ## 技术栈
 

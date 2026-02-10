@@ -5,11 +5,12 @@ services:
       dockerfile: Dockerfile
     container_name: vulncycleinsight
     ports:
-      - "3000:3000"
+      - '25952:5173'
     volumes:
       - .:/app
       - /app/node_modules
     environment:
       - NODE_ENV=development
+      - PORT=5173
     stdin_open: true
     tty: true

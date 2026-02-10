@@ -10,6 +10,20 @@ import {
   updateLifecycleView,
 } from './renderer.js';
 import { storageManager, type HistoryEntry, type SaveStatus } from './storage.js';
+import {
+  readFromGist,
+  readFromRepo,
+  saveToGist,
+  saveToRepo,
+  type GithubMode,
+} from './githubClient.js';
+import {
+  applyTemplate,
+  clearGithubToken,
+  loadGithubConfig,
+  saveGithubConfig,
+  type GithubConfig,
+} from './githubConfig.js';
 import { EditorView } from '@codemirror/view';
 
 // 视图类型
@@ -256,6 +270,9 @@ function initApp(): void {
   // 初始化保存功能
   initSaveFeature(editor);
 
+  // 初始化 GitHub 云端存储
+  initGithubIntegration(editor, previewContent);
+
   // 初始化历史版本功能
   initHistoryModal(editor, previewContent);
 
@@ -451,6 +468,341 @@ function initSaveFeature(editor: EditorView): void {
     const status = storageManager.getSaveStatus(content);
     updateSaveStatusUI(status);
   }, 1000);
+}
+
+type GithubStatusKind = 'info' | 'success' | 'error';
+
+function initGithubIntegration(editor: EditorView, previewContent: HTMLElement): void {
+  const settingsBtn = document.getElementById('github-settings-btn') as HTMLButtonElement | null;
+  const modal = document.getElementById('github-modal');
+  const closeTargets = Array.from(
+    modal?.querySelectorAll('[data-github-close]') ?? []
+  ) as HTMLElement[];
+  const modeRadios = Array.from(
+    document.querySelectorAll<HTMLInputElement>("input[name='github-mode']")
+  );
+  const tokenInput = document.getElementById('github-token') as HTMLInputElement | null;
+  const rememberInput = document.getElementById('github-remember') as HTMLInputElement | null;
+  const clearTokenBtn = document.getElementById('github-clear-token') as HTMLButtonElement | null;
+  const gistSection = document.getElementById('github-gist-fields');
+  const repoSection = document.getElementById('github-repo-fields');
+  const gistIdInput = document.getElementById('github-gist-id') as HTMLInputElement | null;
+  const gistFilenameInput = document.getElementById(
+    'github-gist-filename'
+  ) as HTMLInputElement | null;
+  const repoOwnerInput = document.getElementById('github-repo-owner') as HTMLInputElement | null;
+  const repoNameInput = document.getElementById('github-repo-name') as HTMLInputElement | null;
+  const repoBranchInput = document.getElementById('github-repo-branch') as HTMLInputElement | null;
+  const repoPathInput = document.getElementById('github-repo-path') as HTMLInputElement | null;
+  const commitMessageInput = document.getElementById(
+    'github-commit-message'
+  ) as HTMLInputElement | null;
+  const saveBtn = document.getElementById('github-save-btn') as HTMLButtonElement | null;
+  const loadBtn = document.getElementById('github-load-btn') as HTMLButtonElement | null;
+  const statusEl = document.getElementById('github-status');
+
+  if (
+    !settingsBtn ||
+    !modal ||
+    !modeRadios.length ||
+    !tokenInput ||
+    !rememberInput ||
+    !gistSection ||
+    !repoSection ||
+    !gistFilenameInput ||
+    !repoOwnerInput ||
+    !repoNameInput ||
+    !repoBranchInput ||
+    !repoPathInput ||
+    !commitMessageInput ||
+    !saveBtn ||
+    !loadBtn ||
+    !statusEl
+  ) {
+    console.error('GitHub integration elements not found');
+    return;
+  }
+
+  let config: GithubConfig = loadGithubConfig();
+  let busy = false;
+
+  const openModal = () => {
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+  };
+
+  const closeModal = () => {
+    modal.classList.add('hidden');
+    modal.setAttribute('aria-hidden', 'true');
+  };
+
+  settingsBtn.addEventListener('click', () => {
+    openModal();
+  });
+
+  closeTargets.forEach(node => node.addEventListener('click', closeModal));
+
+  modal.addEventListener('click', event => {
+    if (event.target === modal) {
+      closeModal();
+    }
+  });
+
+  const setStatus = (text: string, kind: GithubStatusKind = 'info') => {
+    statusEl.textContent = text;
+    statusEl.className = `github-status ${kind}`;
+  };
+
+  const setBusy = (value: boolean) => {
+    busy = value;
+    const disabled = busy || config.mode === 'local' || !config.token;
+    saveBtn.disabled = disabled;
+    loadBtn.disabled = disabled;
+  };
+
+  const persist = () => {
+    saveGithubConfig(config);
+  };
+
+  const syncModeUI = () => {
+    gistSection.classList.toggle('active', config.mode === 'gist');
+    repoSection.classList.toggle('active', config.mode === 'repo');
+    modeRadios.forEach(radio => {
+      radio.checked = radio.value === config.mode;
+    });
+
+    const remoteEnabled = config.mode !== 'local' && Boolean(config.token) && !busy;
+    saveBtn.disabled = !remoteEnabled;
+    loadBtn.disabled = !remoteEnabled;
+
+    const modeLabel =
+      config.mode === 'local'
+        ? '当前模式：Local（仅浏览器）'
+        : config.mode === 'gist'
+          ? '当前模式：Gist'
+          : '当前模式：Repo';
+    setStatus(modeLabel, 'info');
+  };
+
+  const applyConfigToInputs = () => {
+    tokenInput.value = config.token;
+    rememberInput.checked = config.rememberToken;
+    if (gistIdInput) gistIdInput.value = config.gistId;
+    gistFilenameInput.value = config.gistFilename;
+    repoOwnerInput.value = config.repoOwner;
+    repoNameInput.value = config.repoName;
+    repoBranchInput.value = config.repoBranch;
+    repoPathInput.value = config.repoPath;
+    commitMessageInput.value = config.commitMessage;
+    syncModeUI();
+  };
+
+  const updateConfig = (partial: Partial<GithubConfig>) => {
+    config = { ...config, ...partial };
+    persist();
+    syncModeUI();
+  };
+
+  const ensureToken = (): boolean => {
+    if (!config.token) {
+      setStatus('请填写 PAT', 'error');
+      return false;
+    }
+    return true;
+  };
+
+  const ensureRepoBasics = (): boolean => {
+    if (!config.repoOwner.trim() || !config.repoName.trim()) {
+      setStatus('请填写 owner/repo', 'error');
+      return false;
+    }
+    return true;
+  };
+
+  const handleSave = async () => {
+    if (config.mode === 'local') {
+      setStatus('当前为 Local 模式，仅保存到浏览器', 'info');
+      showSaveNotification('已保存到浏览器');
+      return;
+    }
+    if (!ensureToken()) return;
+
+    setBusy(true);
+    setStatus('正在保存到 GitHub...', 'info');
+    const content = editor.state.doc.toString();
+
+    if (config.mode === 'gist') {
+      const filename = applyTemplate(config.gistFilename || 'reports/{{date}}.md');
+      const result = await saveToGist({
+        token: config.token,
+        gistId: config.gistId || undefined,
+        filename,
+        content,
+      });
+      if (result.ok) {
+        if (result.data?.gistId && !config.gistId) {
+          updateConfig({ gistId: result.data.gistId });
+        }
+        storageManager.manualSave(content);
+        setStatus('已保存到 Gist', 'success');
+        showSaveNotification('已保存到 GitHub');
+      } else {
+        setStatus(result.error || '保存到 Gist 失败', 'error');
+      }
+    } else {
+      if (!ensureRepoBasics()) {
+        setBusy(false);
+        return;
+      }
+      const path = applyTemplate(config.repoPath || 'reports/{{date}}.md');
+      const message = applyTemplate(config.commitMessage || 'chore: save report {{datetime}}');
+      const result = await saveToRepo({
+        token: config.token,
+        owner: config.repoOwner.trim(),
+        repo: config.repoName.trim(),
+        branch: (config.repoBranch || 'main').trim(),
+        path,
+        message,
+        content,
+      });
+      if (result.ok) {
+        storageManager.manualSave(content);
+        setStatus('已保存到 Repo', 'success');
+        showSaveNotification('已保存到 GitHub');
+      } else {
+        setStatus(result.error || '保存到 Repo 失败', 'error');
+      }
+    }
+    setBusy(false);
+  };
+
+  const handleLoad = async () => {
+    if (config.mode === 'local') {
+      setStatus('当前为 Local 模式，无法从 GitHub 拉取', 'info');
+      return;
+    }
+    if (!ensureToken()) return;
+
+    setBusy(true);
+    setStatus('正在从 GitHub 拉取...', 'info');
+
+    if (config.mode === 'gist') {
+      if (!config.gistId.trim()) {
+        setStatus('请填写 Gist ID', 'error');
+        setBusy(false);
+        return;
+      }
+      const filename = config.gistFilename ? applyTemplate(config.gistFilename) : undefined;
+      const result = await readFromGist({
+        token: config.token,
+        gistId: config.gistId,
+        filename,
+      });
+      if (result.ok && typeof result.data === 'string') {
+        editor.dispatch({
+          changes: { from: 0, to: editor.state.doc.length, insert: result.data },
+        });
+        renderCurrentView(result.data, previewContent);
+        storageManager.manualSave(result.data);
+        updateSaveStatus(result.data);
+        storageManager.seedHistory(result.data);
+        setStatus('已从 Gist 拉取并同步到本地', 'success');
+        showSaveNotification('已从 GitHub 拉取');
+      } else {
+        setStatus(result.error || '从 Gist 拉取失败', 'error');
+      }
+    } else {
+      if (!ensureRepoBasics()) {
+        setBusy(false);
+        return;
+      }
+      const path = applyTemplate(config.repoPath || 'reports/{{date}}.md');
+      const result = await readFromRepo({
+        token: config.token,
+        owner: config.repoOwner.trim(),
+        repo: config.repoName.trim(),
+        branch: (config.repoBranch || 'main').trim(),
+        path,
+      });
+      if (result.ok && typeof result.data === 'string') {
+        editor.dispatch({
+          changes: { from: 0, to: editor.state.doc.length, insert: result.data },
+        });
+        renderCurrentView(result.data, previewContent);
+        storageManager.manualSave(result.data);
+        updateSaveStatus(result.data);
+        storageManager.seedHistory(result.data);
+        setStatus('已从 Repo 拉取并同步到本地', 'success');
+        showSaveNotification('已从 GitHub 拉取');
+      } else {
+        setStatus(result.error || '从 Repo 拉取失败', 'error');
+      }
+    }
+    setBusy(false);
+  };
+
+  modeRadios.forEach(radio => {
+    radio.addEventListener('change', () => {
+      const value = radio.value as GithubMode;
+      updateConfig({ mode: value });
+    });
+  });
+
+  tokenInput.addEventListener('input', () => {
+    updateConfig({ token: tokenInput.value });
+  });
+
+  rememberInput.addEventListener('change', () => {
+    updateConfig({ rememberToken: rememberInput.checked });
+  });
+
+  clearTokenBtn?.addEventListener('click', () => {
+    clearGithubToken();
+    config = { ...config, token: '', rememberToken: false };
+    applyConfigToInputs();
+    setStatus('已清除令牌', 'info');
+  });
+
+  gistIdInput?.addEventListener('input', () => {
+    updateConfig({ gistId: gistIdInput.value });
+  });
+
+  gistFilenameInput.addEventListener('input', () => {
+    updateConfig({ gistFilename: gistFilenameInput.value });
+  });
+
+  repoOwnerInput.addEventListener('input', () => {
+    updateConfig({ repoOwner: repoOwnerInput.value });
+  });
+
+  repoNameInput.addEventListener('input', () => {
+    updateConfig({ repoName: repoNameInput.value });
+  });
+
+  repoBranchInput.addEventListener('input', () => {
+    updateConfig({ repoBranch: repoBranchInput.value });
+  });
+
+  repoPathInput.addEventListener('input', () => {
+    updateConfig({ repoPath: repoPathInput.value });
+  });
+
+  commitMessageInput.addEventListener('input', () => {
+    updateConfig({ commitMessage: commitMessageInput.value });
+  });
+
+  saveBtn.addEventListener('click', () => {
+    if (busy) return;
+    void handleSave();
+  });
+
+  loadBtn.addEventListener('click', () => {
+    if (busy) return;
+    void handleLoad();
+  });
+
+  applyConfigToInputs();
+  setBusy(false);
 }
 
 // 初始化历史版本弹窗功能

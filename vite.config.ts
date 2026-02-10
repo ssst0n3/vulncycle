@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   server: {
-    port: 3000,
+    port: Number(process.env.PORT ?? 0) || 0,
     host: '0.0.0.0', // 允许外部访问，Docker 环境需要
     open: false, // Docker 环境中不自动打开浏览器
   },
@@ -30,4 +30,3 @@ export default defineConfig({
     ],
   },
 });
-

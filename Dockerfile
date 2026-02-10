@@ -14,7 +14,7 @@ RUN npm install
 COPY . .
 
 # 暴露 Vite 开发服务器端口
-EXPOSE 3000
+# EXPOSE 3000
 
 # 启动开发服务器
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
