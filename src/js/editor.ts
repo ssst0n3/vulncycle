@@ -1,11 +1,10 @@
 import { EditorView, lineNumbers, KeyBinding } from '@codemirror/view';
-import { EditorState, Extension } from '@codemirror/state';
+import { EditorState, Extension, Range } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { keymap } from '@codemirror/view';
 import { foldGutter, foldKeymap, foldService, codeFolding } from '@codemirror/language';
-import { Range, EditorState } from '@codemirror/state';
 
 // 编辑器配置选项
 export interface EditorOptions {
@@ -19,7 +18,11 @@ export interface EditorOptions {
 
 // Markdown 标题折叠服务
 // 检测 markdown 标题（# 到 ######）并支持折叠到下一个同级或更高级标题
-function markdownHeadingFoldService(state: EditorState, start: number, end: number): Range | null {
+function markdownHeadingFoldService(
+  state: EditorState,
+  start: number,
+  _end: number
+): Range<unknown> | null {
   const doc = state.doc;
   const startLine = doc.lineAt(start);
   const lineText = startLine.text;

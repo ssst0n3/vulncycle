@@ -6,7 +6,6 @@ import {
   extractTitle,
   type LifecycleStage,
   type StageMetadata,
-  type MetadataItem,
   type StageHeading,
 } from './parser.js';
 
@@ -348,11 +347,6 @@ function applyStageSubsectionsWithState(
   stageBody.appendChild(fragment);
 }
 
-// 保留旧函数签名以兼容其他调用
-function applyStageSubsections(stageBody: HTMLElement): void {
-  applyStageSubsectionsWithState(stageBody);
-}
-
 function applyLifecycleSubsections(container: HTMLElement): void {
   const bodies = container.querySelectorAll<HTMLElement>('.stage-body');
   bodies.forEach(body => applyStageSubsectionsWithState(body));
@@ -414,9 +408,16 @@ const marked = new Marked(
 marked.setOptions({
   breaks: true,
   gfm: true,
-  headerIds: true,
   mangle: false,
 });
+
+const renderMarkdown = (markdown: string): string => {
+  const rendered = marked.parse(markdown);
+  if (rendered instanceof Promise) {
+    throw new Error('Markdown rendering unexpectedly returned a Promise');
+  }
+  return rendered;
+};
 
 // 解析 Markdown 链接格式 [text](url)
 function parseMarkdownLink(value: string): { text: string; url: string } | null {
@@ -605,18 +606,6 @@ interface TimeNode {
   }>;
 }
 
-function renderTimeBarHtml(timeInfo: TimeInfo[]): string {
-  return timeInfo
-    .map(time => {
-      const timeLabel =
-        time.timestamp !== null
-          ? `<span class="time-label-name">${escapeHtml(time.label)}</span><span class="time-label-value">${escapeHtml(time.value)}</span>`
-          : `<span class="time-label-name">${escapeHtml(time.label)}</span><span class="time-label-value time-label-pending">${escapeHtml(time.value)}</span>`;
-      return `<div class="time-item">${timeLabel}</div>`;
-    })
-    .join('');
-}
-
 function renderTimelineMarkerHtml(timeNode: TimeNode, isBasicInfoOnly: boolean): string {
   const hasTimestamp = timeNode.timestamp !== null;
   if (hasTimestamp && timeNode.timestamp) {
@@ -637,7 +626,7 @@ function groupStagesByTime(stages: LifecycleStage[]): TimeNode[] {
   const timeMap = new Map<number | string, TimeNode>();
   const nodeOrder: Array<number | string> = []; // 记录节点的出现顺序
 
-  stages.forEach((stage, index) => {
+  stages.forEach(stage => {
     const primaryTimestamp = getPrimaryTimestamp(stage);
     const timeInfo = extractTimeInfo(stage.content);
 
@@ -725,7 +714,7 @@ export function updateLifecycleView(markdown: string, container: HTMLElement): b
     }
 
     for (let stageIndex = 0; stageIndex < timeNode.stages.length; stageIndex += 1) {
-      const { stage, timeInfo } = timeNode.stages[stageIndex];
+      const { stage } = timeNode.stages[stageIndex];
       const stageElement = nodeGroup.querySelector(
         `.lifecycle-stage[data-stage-index="${stageIndex}"]`
       );
@@ -823,7 +812,7 @@ export function updateLifecycleView(markdown: string, container: HTMLElement): b
       });
 
       if (stage.content.trim()) {
-        body.innerHTML = `${ensureHljsClass(marked.parse(stage.content.trim()))}`;
+        body.innerHTML = `${ensureHljsClass(renderMarkdown(stage.content.trim()))}`;
       } else {
         body.innerHTML = '<p class="stage-empty">暂无内容</p>';
       }
@@ -876,7 +865,7 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
     const content = contentLines.join('\n').trim();
     html += '<div class="lifecycle-stages">';
     if (content) {
-      html += `<div class="stage-content">${ensureHljsClass(marked.parse(content))}</div>`;
+      html += `<div class="stage-content">${ensureHljsClass(renderMarkdown(content))}</div>`;
     } else {
       html +=
         '<div class="stage-content"><p style="text-align: center; color: #999; padding: 40px;">请在左侧输入 Markdown 内容...</p></div>';
@@ -902,18 +891,6 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
       // 检查是否只包含基本信息（stageNum === 1）
       const isBasicInfoOnly = timeNode.stages.every(s => s.stage.stageNum === 1);
 
-      // 计算时间范围（如果有多个时间点）
-      const allTimestamps = timeNode.stages
-        .flatMap(s => s.timeInfo.map(t => t.timestamp))
-        .filter((t): t is number => t !== null)
-        .sort((a, b) => a - b);
-
-      const minTimestamp = allTimestamps.length > 0 ? allTimestamps[0] : null;
-      const maxTimestamp =
-        allTimestamps.length > 0 ? allTimestamps[allTimestamps.length - 1] : null;
-      const hasTimeRange =
-        minTimestamp !== null && maxTimestamp !== null && minTimestamp !== maxTimestamp;
-
       // 时间节点组
       html += `<div class="timeline-node-group" data-timestamp="${timeNode.timestamp ?? ''}" data-index="${nodeIndex}">`;
 
@@ -938,7 +915,7 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
       // 该时间点的所有阶段
       html += '<div class="timeline-stages-container">';
 
-      timeNode.stages.forEach(({ stage, timeInfo, primaryTimestamp }, stageIndex) => {
+      timeNode.stages.forEach(({ stage }, stageIndex) => {
         const stageNum = stage.stageNum ?? '?';
         const content = stage.content.trim();
         const summary = extractSummary(content);
@@ -972,7 +949,7 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
 
         // 阶段内容
         if (content) {
-          html += `<div class="stage-body">${ensureHljsClass(marked.parse(content))}</div>`;
+          html += `<div class="stage-body">${ensureHljsClass(renderMarkdown(content))}</div>`;
         } else {
           html += '<div class="stage-body"><p class="stage-empty">暂无内容</p></div>';
         }
@@ -1102,7 +1079,7 @@ export function renderExploitabilityView(markdown: string, container: HTMLElemen
       html += '</div>';
 
       if (section.content.trim()) {
-        html += `<div class="exploitability-section-content">${ensureHljsClass(marked.parse(section.content))}</div>`;
+        html += `<div class="exploitability-section-content">${ensureHljsClass(renderMarkdown(section.content))}</div>`;
       } else {
         html +=
           '<div class="exploitability-section-content"><p class="section-empty">暂无内容</p></div>';
@@ -1161,7 +1138,7 @@ export function renderIntelligenceView(markdown: string, container: HTMLElement)
     html += '</div>';
   } else {
     html += '<div class="intelligence-content">';
-    html += `${ensureHljsClass(marked.parse(content))}`;
+    html += `${ensureHljsClass(renderMarkdown(content))}`;
     html += '</div>';
   }
 
@@ -1224,7 +1201,7 @@ export function renderAnalysisView(markdown: string, container: HTMLElement): vo
       html += '</div>';
 
       if (stage.content) {
-        html += `<div class="analysis-section-content">${ensureHljsClass(marked.parse(stage.content))}</div>`;
+        html += `<div class="analysis-section-content">${ensureHljsClass(renderMarkdown(stage.content))}</div>`;
       } else {
         html += '<div class="analysis-section-content"><p class="section-empty">暂无内容</p></div>';
       }
@@ -1719,7 +1696,7 @@ export function renderCompletionView(markdown: string, container: HTMLElement): 
       // 显示子章节列表
       if (completion.subsections.length > 0) {
         html += '<div class="completion-subsections">';
-        completion.subsections.forEach((subsection, idx) => {
+        completion.subsections.forEach(subsection => {
           const subsectionClass = subsection.isComplete ? 'complete' : 'incomplete';
           const subsectionIcon = subsection.isComplete ? '✓' : '✗';
           html += `<div class="completion-subsection ${subsectionClass}">`;

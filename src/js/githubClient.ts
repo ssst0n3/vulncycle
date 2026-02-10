@@ -123,8 +123,8 @@ export async function saveToRepo(params: RepoSaveParams): Promise<GithubResult<{
   )}`;
 
   const shaResult = await getRepoFileSha({ token, owner, repo, branch, path, fetcher });
-  if (!shaResult.ok && shaResult.status && shaResult.status !== 404) {
-    return shaResult as GithubResult<{ sha: string }>;
+  if (!shaResult.ok) {
+    return { ok: false, status: shaResult.status, error: shaResult.error };
   }
 
   const body = JSON.stringify({
