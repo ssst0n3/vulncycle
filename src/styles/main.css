@@ -2643,11 +2643,59 @@ pre {
     transform var(--transition-normal);
   font-weight: 500;
   backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 200px;
 }
 
 .save-notification.show {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* 通知图标 */
+.notification-icon {
+  font-size: 1.2em;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+}
+
+/* 成功状态 */
+.save-notification.success {
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  box-shadow: 0 20px 60px rgba(67, 233, 123, 0.3);
+}
+
+.save-notification.success .notification-icon {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* 错误状态 */
+.save-notification.error {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
+  box-shadow: 0 20px 60px rgba(255, 107, 107, 0.3);
+}
+
+.save-notification.error .notification-icon {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* 信息状态 */
+.save-notification.info {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  box-shadow: 0 20px 60px rgba(79, 172, 254, 0.3);
+}
+
+.save-notification.info .notification-icon {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 /* 响应式：保存按钮和状态指示器 */

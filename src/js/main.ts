@@ -416,7 +416,7 @@ async function handleTemplateReload(
     showSaveNotification('已加载模板');
   } catch (error) {
     console.error('Failed to reload template:', error);
-    showSaveNotification('模板加载失败');
+    showSaveNotification('模板加载失败', 'error');
   }
 }
 
@@ -488,6 +488,10 @@ function initSaveFeature(editor: EditorView): void {
   const saveBtn = document.getElementById('save-btn');
   const downloadBtn = document.getElementById('download-btn');
 
+  // 根据当前设置初始化保存按钮文字
+  const config = loadGithubConfig();
+  updateSaveBtnLabel(config.mode);
+
   // 启动自动保存
   storageManager.startAutoSave(
     () => editor.state.doc.toString(),
@@ -500,10 +504,30 @@ function initSaveFeature(editor: EditorView): void {
   if (saveBtn) {
     saveBtn.addEventListener('click', () => {
       const content = editor.state.doc.toString();
-      storageManager.manualSave(content);
+      const config = loadGithubConfig();
 
-      // 显示保存成功提示
-      showSaveNotification('已保存');
+      if (config.mode === 'local') {
+        // Local 模式：保存到浏览器
+        storageManager.manualSave(content);
+        const now = new Date();
+        const timeStr = now.toLocaleString('zh-CN', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        });
+        showSaveNotification(`已保存到浏览器（${timeStr}）`);
+      } else {
+        // GitHub 模式：触发 GitHub 保存流程
+        const githubSaveBtn = document.getElementById(
+          'github-save-btn'
+        ) as HTMLButtonElement | null;
+        if (githubSaveBtn) {
+          githubSaveBtn.click();
+        }
+      }
     });
   }
 
@@ -513,7 +537,7 @@ function initSaveFeature(editor: EditorView): void {
       const content = editor.state.doc.toString();
       const filename = generateFilename();
       storageManager.downloadAsFile(content, filename);
-      showSaveNotification('已下载文件');
+      showSaveNotification(`已下载文件: ${filename}`);
     });
   }
 
@@ -526,6 +550,23 @@ function initSaveFeature(editor: EditorView): void {
 }
 
 type GithubStatusKind = 'info' | 'success' | 'error';
+
+// 更新保存按钮文字以反映当前保存模式
+function updateSaveBtnLabel(mode: 'local' | 'gist' | 'repo'): void {
+  const saveBtnLabel = document.getElementById('save-btn-label');
+  const saveBtn = document.getElementById('save-btn');
+  if (!saveBtnLabel || !saveBtn) return;
+
+  const labels: Record<string, { text: string; title: string }> = {
+    local: { text: '保存到浏览器', title: '保存到浏览器' },
+    gist: { text: '保存到 Gist', title: '保存到 GitHub Gist' },
+    repo: { text: '保存到仓库', title: '保存到 GitHub 仓库' },
+  };
+
+  const config = labels[mode] || labels.local;
+  saveBtnLabel.textContent = config.text;
+  saveBtn.title = config.title;
+}
 
 function initGithubIntegration(editor: EditorView, previewContent: HTMLElement): void {
   const settingsBtn = document.getElementById('github-settings-btn') as HTMLButtonElement | null;
@@ -645,6 +686,9 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
           ? '当前模式：Gist'
           : '当前模式：Repo';
     setStatus(modeLabel, 'info');
+
+    // 更新顶部保存按钮文字
+    updateSaveBtnLabel(config.mode);
   };
 
   const applyConfigToInputs = () => {
@@ -745,7 +789,16 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
   const handleSave = async () => {
     if (config.mode === 'local') {
       setStatus('当前为 Local 模式，仅保存到浏览器', 'info');
-      showSaveNotification('已保存到浏览器');
+      const now = new Date();
+      const timeStr = now.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      });
+      showSaveNotification(`已保存到浏览器（${timeStr}）`);
       return;
     }
     if (!ensureToken()) return;
@@ -768,9 +821,11 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
         }
         storageManager.manualSave(content);
         setStatus('已保存到 Gist', 'success');
-        showSaveNotification('已保存到 GitHub');
+        const gistId = result.data?.gistId || config.gistId;
+        showSaveNotification(`已保存到 Gist: ${gistId}`, 'success');
       } else {
         setStatus(result.error || '保存到 Gist 失败', 'error');
+        showSaveNotification(result.error || '保存到 Gist 失败', 'error');
       }
     } else {
       if (!ensureRepoBasics()) {
@@ -791,9 +846,12 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
       if (result.ok) {
         storageManager.manualSave(content);
         setStatus('已保存到 Repo', 'success');
-        showSaveNotification('已保存到 GitHub');
+        const shaShort = result.data?.sha ? result.data.sha.substring(0, 7) : 'unknown';
+        const repoPath = `${config.repoOwner}/${config.repoName}/${path}`;
+        showSaveNotification(`已保存到 ${repoPath}（提交: ${shaShort}）`, 'success');
       } else {
         setStatus(result.error || '保存到 Repo 失败', 'error');
+        showSaveNotification(result.error || '保存到 Repo 失败', 'error');
       }
     }
     setBusy(false);
@@ -1248,22 +1306,34 @@ function generateFilename(): string {
 }
 
 // 显示保存通知
-function showSaveNotification(message: string): void {
+type NotificationType = 'success' | 'error' | 'info';
+
+function showSaveNotification(message: string, type: NotificationType = 'success'): void {
   const notification = document.createElement('div');
-  notification.className = 'save-notification';
-  notification.textContent = message;
+  notification.className = `save-notification ${type}`;
+
+  // Add icon based on type
+  const iconMap = {
+    success: '✓',
+    error: '✗',
+    info: 'ℹ',
+  };
+
+  notification.innerHTML = `<span class="notification-icon">${iconMap[type]}</span><span class="notification-message">${message}</span>`;
   document.body.appendChild(notification);
 
   // 触发动画
-  setTimeout(() => {
+  requestAnimationFrame(() => {
     notification.classList.add('show');
-  }, 10);
+  });
 
   // 3秒后移除
   setTimeout(() => {
     notification.classList.remove('show');
     setTimeout(() => {
-      document.body.removeChild(notification);
+      if (notification.parentNode) {
+        document.body.removeChild(notification);
+      }
     }, 300);
   }, 3000);
 }
