@@ -292,6 +292,24 @@ header h1 {
   align-items: center;
 }
 
+.github-field-row.full {
+  grid-template-columns: auto 1fr;
+}
+
+.github-advanced {
+  border: 1px dashed rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  background: rgba(102, 126, 234, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.github-advanced.collapsed {
+  display: none;
+}
+
 .github-field-row input[type='text'],
 .github-field-row input[type='password'] {
   width: 100%;

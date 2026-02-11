@@ -497,6 +497,11 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
   const repoNameInput = document.getElementById('github-repo-name') as HTMLInputElement | null;
   const repoBranchInput = document.getElementById('github-repo-branch') as HTMLInputElement | null;
   const repoPathInput = document.getElementById('github-repo-path') as HTMLInputElement | null;
+  const repoUrlInput = document.getElementById('github-repo-url') as HTMLInputElement | null;
+  const repoAdvancedToggle = document.getElementById(
+    'github-repo-advanced-toggle'
+  ) as HTMLButtonElement | null;
+  const repoAdvancedSection = document.getElementById('github-repo-advanced') as HTMLElement | null;
   const commitMessageInput = document.getElementById(
     'github-commit-message'
   ) as HTMLInputElement | null;
@@ -517,6 +522,9 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
     !repoNameInput ||
     !repoBranchInput ||
     !repoPathInput ||
+    !repoUrlInput ||
+    !repoAdvancedToggle ||
+    !repoAdvancedSection ||
     !commitMessageInput ||
     !saveBtn ||
     !loadBtn ||
@@ -597,6 +605,14 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
     repoBranchInput.value = config.repoBranch;
     repoPathInput.value = config.repoPath;
     commitMessageInput.value = config.commitMessage;
+    if (!repoUrlInput.value) {
+      repoUrlInput.value = buildRepoFileUrl({
+        owner: config.repoOwner,
+        repo: config.repoName,
+        branch: config.repoBranch,
+        path: config.repoPath,
+      });
+    }
     syncModeUI();
   };
 
@@ -604,6 +620,58 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
     config = { ...config, ...partial };
     persist();
     syncModeUI();
+  };
+
+  const setAdvancedExpanded = (expanded: boolean) => {
+    repoAdvancedSection.classList.toggle('collapsed', !expanded);
+    repoAdvancedSection.setAttribute('aria-hidden', expanded ? 'false' : 'true');
+    repoAdvancedToggle.textContent = expanded ? '收起高级设置' : '展开高级设置';
+  };
+
+  const buildRepoFileUrl = (params: {
+    owner: string;
+    repo: string;
+    branch: string;
+    path: string;
+  }): string => {
+    const owner = params.owner.trim();
+    const repo = params.repo.trim();
+    const branch = params.branch.trim();
+    const path = params.path.trim();
+    if (!owner || !repo || !branch || !path) {
+      return '';
+    }
+    const normalizedPath = path.replace(/^\/+/, '');
+    return `https://github.com/${owner}/${repo}/blob/${branch}/${normalizedPath}`;
+  };
+
+  const parseGithubRepoUrl = (
+    raw: string
+  ): { owner: string; repo: string; branch: string; path: string } | null => {
+    const value = raw.trim();
+    if (!value) return null;
+    let url: URL;
+    try {
+      url = new URL(value);
+    } catch {
+      return null;
+    }
+    if (url.hostname !== 'github.com') {
+      return null;
+    }
+    const segments = url.pathname.split('/').filter(Boolean);
+    if (segments.length < 5) {
+      return null;
+    }
+    const [owner, repo, type, branch, ...pathParts] = segments;
+    if (!owner || !repo || !branch || !pathParts.length) {
+      return null;
+    }
+    if (type !== 'blob' && type !== 'raw') {
+      return null;
+    }
+    const path = pathParts.map(decodeURIComponent).join('/');
+    return { owner, repo, branch, path };
   };
 
   const ensureToken = (): boolean => {
@@ -776,22 +844,75 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
 
   repoOwnerInput.addEventListener('input', () => {
     updateConfig({ repoOwner: repoOwnerInput.value });
+    repoUrlInput.value = buildRepoFileUrl({
+      owner: repoOwnerInput.value,
+      repo: repoNameInput.value,
+      branch: repoBranchInput.value || 'main',
+      path: repoPathInput.value,
+    });
   });
 
   repoNameInput.addEventListener('input', () => {
     updateConfig({ repoName: repoNameInput.value });
+    repoUrlInput.value = buildRepoFileUrl({
+      owner: repoOwnerInput.value,
+      repo: repoNameInput.value,
+      branch: repoBranchInput.value || 'main',
+      path: repoPathInput.value,
+    });
   });
 
   repoBranchInput.addEventListener('input', () => {
     updateConfig({ repoBranch: repoBranchInput.value });
+    repoUrlInput.value = buildRepoFileUrl({
+      owner: repoOwnerInput.value,
+      repo: repoNameInput.value,
+      branch: repoBranchInput.value || 'main',
+      path: repoPathInput.value,
+    });
   });
 
   repoPathInput.addEventListener('input', () => {
     updateConfig({ repoPath: repoPathInput.value });
+    repoUrlInput.value = buildRepoFileUrl({
+      owner: repoOwnerInput.value,
+      repo: repoNameInput.value,
+      branch: repoBranchInput.value || 'main',
+      path: repoPathInput.value,
+    });
   });
 
   commitMessageInput.addEventListener('input', () => {
     updateConfig({ commitMessage: commitMessageInput.value });
+  });
+
+  repoUrlInput.addEventListener('input', () => {
+    const parsed = parseGithubRepoUrl(repoUrlInput.value);
+    if (!parsed) {
+      if (repoUrlInput.value.trim()) {
+        setStatus('无法解析该文件地址，请检查格式', 'error');
+      } else {
+        syncModeUI();
+      }
+      return;
+    }
+    repoOwnerInput.value = parsed.owner;
+    repoNameInput.value = parsed.repo;
+    repoBranchInput.value = parsed.branch;
+    repoPathInput.value = parsed.path;
+    updateConfig({
+      repoOwner: parsed.owner,
+      repoName: parsed.repo,
+      repoBranch: parsed.branch,
+      repoPath: parsed.path,
+    });
+    setStatus('已从文件地址解析 Repo 信息', 'success');
+    setAdvancedExpanded(false);
+  });
+
+  repoAdvancedToggle.addEventListener('click', () => {
+    const isCollapsed = repoAdvancedSection.classList.contains('collapsed');
+    setAdvancedExpanded(isCollapsed);
   });
 
   saveBtn.addEventListener('click', () => {

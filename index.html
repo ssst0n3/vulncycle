@@ -216,23 +216,36 @@
               </div>
             </div>
             <div id="github-repo-fields" class="github-subsection">
-              <div class="github-field-row">
-                <label class="github-label" for="github-repo-owner">Owner</label>
-                <input id="github-repo-owner" type="text" placeholder="org 或用户名" />
-                <label class="github-label" for="github-repo-name">Repo</label>
-                <input id="github-repo-name" type="text" placeholder="repo" />
-                <label class="github-label" for="github-repo-branch">Branch</label>
-                <input id="github-repo-branch" type="text" placeholder="main" />
-              </div>
-              <div class="github-field-row">
-                <label class="github-label" for="github-repo-path">Path</label>
-                <input id="github-repo-path" type="text" placeholder="reports/{{date}}.md" />
-                <label class="github-label" for="github-commit-message">Commit</label>
+              <div class="github-field-row full">
+                <label class="github-label" for="github-repo-url">文件地址</label>
                 <input
-                  id="github-commit-message"
+                  id="github-repo-url"
                   type="text"
-                  placeholder="chore: save report {{datetime}}"
+                  placeholder="https://github.com/owner/repo/blob/main/path/to/file.md"
                 />
+              </div>
+              <button id="github-repo-advanced-toggle" class="github-ghost-btn" type="button">
+                展开高级设置
+              </button>
+              <div id="github-repo-advanced" class="github-advanced collapsed" aria-hidden="true">
+                <div class="github-field-row">
+                  <label class="github-label" for="github-repo-owner">Owner</label>
+                  <input id="github-repo-owner" type="text" placeholder="org 或用户名" />
+                  <label class="github-label" for="github-repo-name">Repo</label>
+                  <input id="github-repo-name" type="text" placeholder="repo" />
+                  <label class="github-label" for="github-repo-branch">Branch</label>
+                  <input id="github-repo-branch" type="text" placeholder="main" />
+                </div>
+                <div class="github-field-row">
+                  <label class="github-label" for="github-repo-path">Path</label>
+                  <input id="github-repo-path" type="text" placeholder="reports/{{date}}.md" />
+                  <label class="github-label" for="github-commit-message">Commit</label>
+                  <input
+                    id="github-commit-message"
+                    type="text"
+                    placeholder="chore: save report {{datetime}}"
+                  />
+                </div>
               </div>
             </div>
           </div>
