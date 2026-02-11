@@ -2670,8 +2670,8 @@ pre {
 
 /* 成功状态 */
 .save-notification.success {
-  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-  box-shadow: 0 20px 60px rgba(67, 233, 123, 0.3);
+  background: linear-gradient(135deg, #66bb6a 0%, #81c784 100%);
+  box-shadow: 0 20px 60px rgba(102, 187, 106, 0.3);
 }
 
 .save-notification.success .notification-icon {
