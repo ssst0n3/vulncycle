@@ -331,9 +331,8 @@ function initViewSwitcher(editor: EditorView, previewContent: HTMLElement): void
 async function loadTemplate(editor: EditorView, previewContent: HTMLElement): Promise<void> {
   // 优先加载已保存的内容
   const savedContent = storageManager.loadFromLocalStorage();
-
-  if (savedContent) {
-    // 如果有已保存的内容，使用已保存的内容
+  if (savedContent !== null) {
+    // 如果有已保存的内容（包括空字符串），使用已保存的内容
     editor.dispatch({
       changes: { from: 0, to: editor.state.doc.length, insert: savedContent },
     });
@@ -345,7 +344,10 @@ async function loadTemplate(editor: EditorView, previewContent: HTMLElement): Pr
 
   // 如果没有已保存的内容，加载模板
   try {
-    const templateUrl = new URL('TEMPLATE.md', import.meta.env.BASE_URL).toString();
+    const templateUrl = new URL(
+      'TEMPLATE.md',
+      `${window.location.origin}${import.meta.env.BASE_URL}`
+    ).toString();
     const response = await fetch(templateUrl);
     if (!response.ok) {
       throw new Error('Failed to load template');
