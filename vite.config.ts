@@ -1,27 +1,20 @@
 import { defineConfig } from 'vite';
 import { execSync } from 'child_process';
 
-// Generate version string from git info: ${tag}-${commit}${dirty}
+// Generate version string from git info
+// If current commit matches the tag's commit, only show the tag
+// Format: ${tag}${dirty} or ${tag}-${commit}${dirty}
 function getVersion() {
   try {
     // Get short commit hash
     const commit = execSync('git rev-parse --short HEAD').toString().trim();
 
-    // Get the most recent tag
-    let tag = '';
+    // Get the most recent tag with commit info
+    let tagInfo = '';
     try {
-      tag = execSync('git describe --tags --always').toString().trim();
-      // If tag contains commit hash, extract just the tag part
-      if (tag.includes('-')) {
-        const tagMatch = tag.match(/^([^-]+)/);
-        if (tagMatch && tagMatch[1] !== commit) {
-          tag = tagMatch[1];
-        } else {
-          tag = '';
-        }
-      }
+      tagInfo = execSync('git describe --tags --always').toString().trim();
     } catch {
-      tag = '';
+      tagInfo = '';
     }
 
     // Check if working directory is dirty (has uncommitted changes)
@@ -32,10 +25,41 @@ function getVersion() {
       dirty = '-dirty';
     }
 
-    // Format: ${tag}-${commit}${dirty} or ${commit}${dirty} if no tag
-    if (tag && tag !== commit) {
+    // Parse tag info: format can be "v1.0.0" or "v1.0.0-N-g<hash>"
+    let tag = '';
+    let tagCommit = '';
+    let commitsSinceTag = 0;
+
+    if (tagInfo) {
+      if (tagInfo.includes('-')) {
+        const parts = tagInfo.split('-');
+        tag = parts[0];
+        commitsSinceTag = parseInt(parts[1], 10);
+        // Extract commit hash from format like "N-g<hash>"
+        const hashPart = parts[2] || '';
+        if (hashPart.startsWith('g')) {
+          tagCommit = hashPart.substring(1);
+        }
+      } else {
+        // No dash means we're exactly on the tag
+        tag = tagInfo;
+        tagCommit = commit;
+        commitsSinceTag = 0;
+      }
+    }
+
+    // If we're exactly on the tag commit (no commits since tag)
+    // and the tag commit matches current HEAD, show only the tag
+    if (tag && commitsSinceTag === 0 && tagCommit === commit) {
+      return `${tag}${dirty}`;
+    }
+
+    // If we have a tag but not on the tag commit, show tag-commit-dirty
+    if (tag) {
       return `${tag}-${commit}${dirty}`;
     }
+
+    // No tag found, just show commit-dirty
     return `${commit}${dirty}`;
   } catch {
     return 'unknown';
