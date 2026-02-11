@@ -270,6 +270,9 @@ function initApp(): void {
   // 初始化保存功能
   initSaveFeature(editor);
 
+  // 初始化模板功能
+  initTemplateFeature(editor, previewContent);
+
   // 初始化 GitHub 云端存储
   initGithubIntegration(editor, previewContent);
 
@@ -365,6 +368,55 @@ async function loadTemplate(editor: EditorView, previewContent: HTMLElement): Pr
     console.log('无法加载模板文件，使用空编辑器');
     renderCurrentView('', previewContent);
     updateSaveStatus('');
+  }
+}
+
+// 初始化模板功能
+function initTemplateFeature(editor: EditorView, previewContent: HTMLElement): void {
+  const templateBtn = document.getElementById('template-btn') as HTMLButtonElement | null;
+  if (!templateBtn) {
+    return;
+  }
+
+  templateBtn.addEventListener('click', () => {
+    void handleTemplateReload(editor, previewContent);
+  });
+}
+
+async function handleTemplateReload(
+  editor: EditorView,
+  previewContent: HTMLElement
+): Promise<void> {
+  const currentContent = editor.state.doc.toString();
+  const hasContent = currentContent.trim().length > 0;
+  if (hasContent) {
+    const confirmed = window.confirm('将使用模板覆盖当前内容，未保存的修改将丢失。是否继续？');
+    if (!confirmed) {
+      return;
+    }
+  }
+
+  try {
+    const templateUrl = new URL(
+      'TEMPLATE.md',
+      `${window.location.origin}${import.meta.env.BASE_URL}`
+    ).toString();
+    const response = await fetch(templateUrl);
+    if (!response.ok) {
+      throw new Error('Failed to load template');
+    }
+    const text = await response.text();
+    editor.dispatch({
+      changes: { from: 0, to: editor.state.doc.length, insert: text },
+    });
+    renderCurrentView(text, previewContent);
+    storageManager.manualSave(text);
+    updateSaveStatus(text);
+    storageManager.seedHistory(text);
+    showSaveNotification('已加载模板');
+  } catch (error) {
+    console.error('Failed to reload template:', error);
+    showSaveNotification('模板加载失败');
   }
 }
 
