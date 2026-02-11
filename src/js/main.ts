@@ -1,5 +1,6 @@
 import '../styles/main.css';
 import 'highlight.js/styles/github-dark.css';
+import '../types/version.d.ts';
 import { initEditor } from './editor.js';
 import {
   renderLifecycleView,
@@ -223,6 +224,12 @@ function renderCurrentView(markdown: string, container: HTMLElement): void {
 
 // 初始化应用
 function initApp(): void {
+  // Render app version in header
+  const versionElement = document.getElementById('app-version');
+  if (versionElement && typeof __APP_VERSION__ !== 'undefined') {
+    versionElement.textContent = __APP_VERSION__;
+  }
+
   const editorContainer = document.getElementById('markdown-editor-container');
   const previewContent = document.getElementById('preview-content');
 

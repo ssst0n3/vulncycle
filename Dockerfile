@@ -1,6 +1,12 @@
 # Dockerfile
 FROM node:18-alpine
 
+# Install git for version generation
+RUN apk add --no-cache git
+
+# Configure git to trust /app directory (required for Docker volume mounts)
+RUN git config --global --add safe.directory /app
+
 # 设置工作目录
 WORKDIR /app
 

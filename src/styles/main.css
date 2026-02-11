@@ -156,6 +156,15 @@ header h1 {
   font-weight: 600;
 }
 
+.app-version {
+  font-size: 0.5em;
+  color: var(--text-white);
+  font-weight: 400;
+  margin-left: 8px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  opacity: 0.9;
+}
+
 .subtitle {
   font-size: 0.85em;
   opacity: 0.85;
