@@ -1097,7 +1097,7 @@ function updateSaveStatusUI(status: SaveStatus): void {
     saveStatusIndicator.className = 'save-status unsaved';
   } else if (status.lastSaved) {
     const timeStr = formatTime(status.lastSaved);
-    saveStatusIndicator.textContent = `已保存 ${timeStr}`;
+    saveStatusIndicator.textContent = `已暂存 ${timeStr}`;
     saveStatusIndicator.className = 'save-status saved';
   } else {
     saveStatusIndicator.textContent = '未保存';
