@@ -2,9 +2,15 @@ import { EditorView, lineNumbers, KeyBinding } from '@codemirror/view';
 import { EditorState, Extension } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
 import { oneDark } from '@codemirror/theme-one-dark';
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  indentLess,
+  indentMore,
+} from '@codemirror/commands';
 import { keymap } from '@codemirror/view';
-import { foldGutter, foldKeymap, foldService, codeFolding } from '@codemirror/language';
+import { foldGutter, foldKeymap, foldService, codeFolding, syntaxTree } from '@codemirror/language';
 
 // 编辑器配置选项
 export interface EditorOptions {
@@ -77,6 +83,33 @@ function markdownHeadingFoldService(
   return { from: startPos, to: endPos };
 }
 
+function isPositionInCodeBlock(state: EditorState, pos: number): boolean {
+  const tree = syntaxTree(state);
+  let node = tree.resolveInner(pos, -1);
+
+  while (true) {
+    if (
+      node.type.name === 'FencedCode' ||
+      node.type.name === 'CodeBlock' ||
+      node.type.name === 'IndentedCode'
+    ) {
+      return true;
+    }
+
+    if (!node.parent) {
+      break;
+    }
+
+    node = node.parent;
+  }
+
+  return false;
+}
+
+function isSelectionInCodeBlock(state: EditorState): boolean {
+  return state.selection.ranges.every(range => isPositionInCodeBlock(state, range.from));
+}
+
 // 初始化 CodeMirror 6 编辑器
 export function initEditor(parentElement: HTMLElement, options: EditorOptions = {}): EditorView {
   const {
@@ -102,6 +135,27 @@ export function initEditor(parentElement: HTMLElement, options: EditorOptions = 
     },
   };
 
+  const codeBlockTabKeyBindings: KeyBinding[] = [
+    {
+      key: 'Tab',
+      run: (view: EditorView) => {
+        if (!isSelectionInCodeBlock(view.state)) {
+          return false;
+        }
+        return indentMore(view);
+      },
+    },
+    {
+      key: 'Shift-Tab',
+      run: (view: EditorView) => {
+        if (!isSelectionInCodeBlock(view.state)) {
+          return false;
+        }
+        return indentLess(view);
+      },
+    },
+  ];
+
   const extensions: Extension[] = [
     markdown(),
     history(),
@@ -112,7 +166,13 @@ export function initEditor(parentElement: HTMLElement, options: EditorOptions = 
       openText: '▾',
       closedText: '▸',
     }),
-    keymap.of([...historyKeymap, ...defaultKeymap, ...foldKeymap, saveKeyBinding]),
+    keymap.of([
+      ...historyKeymap,
+      ...codeBlockTabKeyBindings,
+      ...defaultKeymap,
+      ...foldKeymap,
+      saveKeyBinding,
+    ]),
     EditorView.theme({
       '&': {
         height: '100%',
