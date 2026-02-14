@@ -485,57 +485,18 @@ function renderValueWithMarkdownLinks(value: string): string {
 // 渲染元数据HTML（仅渲染前几个关键元数据，单行显示）
 function renderMetadataHtml(metadata: StageMetadata | undefined, maxItems: number = 5): string {
   if (!metadata || metadata.items.length === 0) {
-    console.log('⚠️ [Renderer] 无元数据需要渲染');
     return '';
   }
-
-  console.group('📊 [Renderer] 开始渲染元数据');
-  console.log(`原始元数据项数量: ${metadata.items.length}`);
 
   // 保持原始输入顺序，不进行排序
   // 按照模板中的顺序显示：合入时间、提交时间、修复版本、修复者...
   const displayItems = metadata.items.slice(0, maxItems);
-
-  console.log('保持原始顺序的元数据项:');
-  console.table(
-    displayItems.map((item, idx) => ({
-      顺序位置: idx + 1,
-      类型: item.type,
-      标签: item.label,
-      值: item.value.length > 25 ? item.value.substring(0, 25) + '...' : item.value,
-    }))
-  );
-
-  console.log(`实际显示的元数据项数量: ${displayItems.length} (最多${maxItems}个)`);
-  console.log('⚠️ 布局策略: 使用 flex-direction: row-reverse 反向排列，增加容器宽度到90%');
-  console.log(`  → 第一个元数据项 (index=0) 显示在【最右侧】，flex-shrink: 0 确保不被压缩`);
-  console.log(`  → 其他元数据项可以被压缩（flex-shrink: 1），超长显示省略号`);
-  console.log(`  → CSS: .stage-metadata { max-width: 90%, overflow: visible }`);
-
-  if (displayItems.length > 0) {
-    console.log('🎯 第一个元数据项（最右侧显示）详情:');
-    console.log({
-      位置: '最右侧（视觉上）',
-      数组索引: 0,
-      CSS类: 'metadata-item metadata-' + displayItems[0].type + '-item metadata-item-first',
-      标签: displayItems[0].label,
-      值: displayItems[0].value,
-      类型: displayItems[0].type,
-      图标: displayItems[0].icon || '无',
-      'flex-shrink': 0,
-    });
-  }
 
   let html = '<div class="stage-metadata">';
 
   displayItems.forEach((item, index) => {
     // 第一个元数据项添加特殊类名，确保其完整显示
     const itemClass = `metadata-item metadata-${item.type}-item${index === 0 ? ' metadata-item-first' : ''}`;
-    const visualPosition = displayItems.length - index; // 由于 row-reverse，视觉位置是反的
-
-    console.log(
-      `  渲染元数据项 [${index}] → 视觉位置从右数第${visualPosition}个: [${item.type}] ${item.label}`
-    );
 
     html += `<div class="${itemClass}">`;
 
@@ -552,9 +513,6 @@ function renderMetadataHtml(metadata: StageMetadata | undefined, maxItems: numbe
   });
 
   html += '</div>';
-
-  console.log('✅ [Renderer] 元数据HTML生成完成');
-  console.groupEnd();
 
   return html;
 }

@@ -197,10 +197,6 @@ export function extractStageMetadata(content: string): StageMetadata {
   const items: MetadataItem[] = [];
   const lines = content.split('\n');
 
-  // 记录章节内容的前100个字符，用于识别是哪个章节
-  const contentPreview = content.substring(0, 100).replace(/\n/g, ' ');
-  console.log(`🔍 [Parser] 开始提取元数据 - 章节预览: "${contentPreview}..."`);
-
   // 时间相关的关键字
   const timeKeywords = ['时间', 'date', 'time'];
   // 人员相关的关键字
@@ -302,22 +298,7 @@ export function extractStageMetadata(content: string): StageMetadata {
       icon,
     });
 
-    console.log(`  ✓ 提取元数据项 #${items.length}: [${type}] ${label} = "${value}" ${icon || ''}`);
-
     processedLines.add(i);
-  }
-
-  console.log(`✅ [Parser] 提取完成 - 共找到 ${items.length} 个元数据项`);
-  if (items.length > 0) {
-    console.table(
-      items.map((item, idx) => ({
-        序号: idx + 1,
-        标签: item.label,
-        值: item.value.length > 30 ? item.value.substring(0, 30) + '...' : item.value,
-        类型: item.type,
-        图标: item.icon || '-',
-      }))
-    );
   }
 
   return { items };

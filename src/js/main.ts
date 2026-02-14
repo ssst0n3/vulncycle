@@ -372,7 +372,6 @@ async function loadTemplate(editor: EditorView, previewContent: HTMLElement): Pr
     updateSaveStatus(text);
     storageManager.seedHistory(text);
   } catch (err) {
-    console.log('无法加载模板文件，使用空编辑器');
     renderCurrentView('', previewContent);
     updateSaveStatus('');
   }
@@ -422,7 +421,6 @@ async function handleTemplateReload(
     storageManager.seedHistory(text);
     showSaveNotification('已加载模板');
   } catch (error) {
-    console.error('Failed to reload template:', error);
     showSaveNotification('模板加载失败', 'error');
   }
 }
