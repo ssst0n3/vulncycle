@@ -126,76 +126,117 @@ function getSubsectionKey(subsection: Element): string {
 }
 
 function captureLifecycleState(container: HTMLElement): LifecycleViewState {
+  console.log('[captureLifecycleState] Starting...');
   const expandedStageKeys = new Set<string>();
   const expandedSubsectionKeys = new Set<string>();
 
   // 捕获主章节状态
   const stageElements = container.querySelectorAll('.lifecycle-stage.expanded');
+  console.log('[captureLifecycleState] Found expanded stages:', stageElements.length);
   stageElements.forEach(stage => {
     const key = getLifecycleStageKey(stage);
+    console.log('[captureLifecycleState] Captured stage key:', key);
     expandedStageKeys.add(key);
   });
 
   // 捕获子章节状态
   const subsectionElements = container.querySelectorAll('.stage-subsection.expanded');
+  console.log('[captureLifecycleState] Found expanded subsections:', subsectionElements.length);
   subsectionElements.forEach(subsection => {
     const key = getSubsectionKey(subsection);
     if (key) {
+      console.log('[captureLifecycleState] Captured subsection key:', key);
       expandedSubsectionKeys.add(key);
     }
   });
 
-  return {
+  const state = {
     expandedStageKeys,
     expandedSubsectionKeys,
     scrollTop: container.scrollTop,
   };
+  console.log(
+    '[captureLifecycleState] Completed, total expanded stages:',
+    expandedStageKeys.size,
+    ', subsections:',
+    expandedSubsectionKeys.size
+  );
+  return state;
 }
 
 function restoreLifecycleState(container: HTMLElement, state: LifecycleViewState): void {
+  console.log('[restoreLifecycleState] Starting restoration...');
+  console.log('[restoreLifecycleState] State to restore:', {
+    expandedStageKeys: Array.from(state.expandedStageKeys),
+    expandedSubsectionKeys: Array.from(state.expandedSubsectionKeys),
+    scrollTop: state.scrollTop,
+  });
+
   // 恢复主章节状态
   const stageElements = container.querySelectorAll('.lifecycle-stage');
+  console.log('[restoreLifecycleState] Total stage elements:', stageElements.length);
+  let restoredStages = 0;
   stageElements.forEach(stage => {
     const key = getLifecycleStageKey(stage);
     if (state.expandedStageKeys.has(key)) {
+      console.log('[restoreLifecycleState] Restoring expanded stage:', key);
       stage.classList.remove('collapsed');
       stage.classList.add('expanded');
+      restoredStages++;
     }
     const icon = stage.querySelector('.stage-toggle-icon');
     if (icon) {
       icon.textContent = stage.classList.contains('collapsed') ? '▼' : '▲';
     }
   });
+  console.log('[restoreLifecycleState] Restored', restoredStages, 'stages');
 
   // 恢复子章节状态
   const subsectionElements = container.querySelectorAll('.stage-subsection');
+  console.log('[restoreLifecycleState] Total subsection elements:', subsectionElements.length);
+  let restoredSubsections = 0;
   subsectionElements.forEach(subsection => {
     const key = getSubsectionKey(subsection);
     if (key) {
       if (state.expandedSubsectionKeys.has(key)) {
+        console.log('[restoreLifecycleState] Restoring expanded subsection:', key);
         subsection.classList.remove('collapsed');
         subsection.classList.add('expanded');
         const icon = subsection.querySelector('.stage-subsection-toggle-icon');
         if (icon) {
           icon.textContent = '▼';
         }
+        restoredSubsections++;
       }
     }
   });
+  console.log('[restoreLifecycleState] Restored', restoredSubsections, 'subsections');
 
   container.scrollTop = state.scrollTop;
+  console.log('[restoreLifecycleState] Completed, scrollTop set to:', state.scrollTop);
 }
 
 // 渲染当前视图
 function renderCurrentView(markdown: string, container: HTMLElement): void {
+  console.log('[renderCurrentView] Called, currentView:', currentView);
   const initialScrollTop = container.scrollTop;
   let lifecycleState: LifecycleViewState | null = null;
 
   if (currentView === 'lifecycle') {
-    if (updateLifecycleView(markdown, container)) {
+    console.log('[renderCurrentView] Trying updateLifecycleView...');
+    const updateResult = updateLifecycleView(markdown, container);
+    console.log('[renderCurrentView] updateLifecycleView returned:', updateResult);
+    if (updateResult) {
+      console.log('[renderCurrentView] updateLifecycleView succeeded, returning');
       return;
     }
+    console.log('[renderCurrentView] updateLifecycleView failed, capturing lifecycle state...');
     lifecycleState = captureLifecycleState(container);
+    console.log('[renderCurrentView] Captured lifecycle state:', {
+      expandedStageKeys: Array.from(lifecycleState.expandedStageKeys),
+      expandedSubsectionKeys: Array.from(lifecycleState.expandedSubsectionKeys),
+      scrollTop: lifecycleState.scrollTop,
+    });
   }
 
   if (currentView === 'lifecycle') {
@@ -211,8 +252,11 @@ function renderCurrentView(markdown: string, container: HTMLElement): void {
   }
 
   if (currentView === 'lifecycle' && lifecycleState) {
+    console.log('[renderCurrentView] Restoring lifecycle state...');
     restoreLifecycleState(container, lifecycleState);
+    console.log('[renderCurrentView] Lifecycle state restored');
   } else {
+    console.log('[renderCurrentView] Setting scrollTop to:', initialScrollTop);
     container.scrollTop = initialScrollTop;
   }
 

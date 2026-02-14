@@ -254,7 +254,13 @@ function applyStageSubsectionsWithState(
   stageBody: HTMLElement,
   subsectionStates?: Map<string, boolean>
 ): void {
+  console.log(
+    '[applyStageSubsectionsWithState] Called, subsectionStates size:',
+    subsectionStates?.size || 0
+  );
+
   if (!stageBody.querySelector(subsectionHeadingSelector)) {
+    console.log('[applyStageSubsectionsWithState] No subsection headings found, returning');
     return;
   }
 
@@ -263,23 +269,36 @@ function applyStageSubsectionsWithState(
 
   if (subsectionStates) {
     // 使用传入的状态
+    console.log('[applyStageSubsectionsWithState] Using passed subsectionStates');
     for (const [title, isExpanded] of subsectionStates.entries()) {
+      console.log(
+        `[applyStageSubsectionsWithState] State from map: title="${title}", isExpanded=${isExpanded}`
+      );
       if (isExpanded) {
         expandedSubsectionTitles.add(title);
       }
     }
   } else {
     // 如果没有传入状态，尝试捕获当前状态
+    console.log(
+      '[applyStageSubsectionsWithState] No subsectionStates passed, capturing current state'
+    );
     const existingSubsections = stageBody.querySelectorAll('.stage-subsection.expanded');
     existingSubsections.forEach(subsection => {
       const heading = subsection.querySelector(subsectionHeadingSelector);
       if (heading) {
         const titleText =
           heading.getAttribute('data-heading-title') || heading.textContent?.trim() || '';
+        console.log(
+          `[applyStageSubsectionsWithState] Captured current expanded state: title="${titleText}"`
+        );
         expandedSubsectionTitles.add(titleText);
       }
     });
   }
+  console.log(
+    `[applyStageSubsectionsWithState] Total expandedSubsectionTitles: ${expandedSubsectionTitles.size}`
+  );
 
   const fragment = document.createDocumentFragment();
   const childNodes = Array.from(stageBody.childNodes);
@@ -300,8 +319,13 @@ function applyStageSubsectionsWithState(
         }
 
         // 检查这个子章节之前是否是展开的
-        const titleText = element.textContent?.trim() || '';
+        // 使用 data-heading-title 属性获取标题，避免包含锚点按钮的文本
+        const titleText =
+          element.getAttribute('data-heading-title') || element.textContent?.trim() || '';
         const wasExpanded = expandedSubsectionTitles.has(titleText);
+        console.log(
+          `[applyStageSubsectionsWithState] Processing heading: title="${titleText}", wasExpanded=${wasExpanded}`
+        );
 
         const section = document.createElement('div');
         section.className = wasExpanded
@@ -622,18 +646,27 @@ function groupStagesByTime(stages: LifecycleStage[]): TimeNode[] {
 }
 
 export function updateLifecycleView(markdown: string, container: HTMLElement): boolean {
+  console.log('[updateLifecycleView] Starting update...');
+
   if (!markdown.trim()) {
+    console.log('[updateLifecycleView] Returning false: markdown is empty');
     return false;
   }
 
   const stages = parseLifecycleStages(markdown);
+  console.log('[updateLifecycleView] Parsed stages count:', stages.length);
+
   if (stages.length === 0) {
+    console.log('[updateLifecycleView] Returning false: no stages found');
     return false;
   }
 
   const lifecycleRoot = container.querySelector('.lifecycle-container');
   const timelineWrapper = container.querySelector('.timeline-wrapper');
   if (!lifecycleRoot || !timelineWrapper) {
+    console.log(
+      '[updateLifecycleView] Returning false: lifecycleRoot or timelineWrapper not found'
+    );
     return false;
   }
 
@@ -645,7 +678,14 @@ export function updateLifecycleView(markdown: string, container: HTMLElement): b
 
   const timeNodes = groupStagesByTime(stages);
   const nodeGroups = container.querySelectorAll('.timeline-node-group');
+  console.log(
+    '[updateLifecycleView] nodeGroups.length:',
+    nodeGroups.length,
+    'timeNodes.length:',
+    timeNodes.length
+  );
   if (nodeGroups.length !== timeNodes.length) {
+    console.log('[updateLifecycleView] Returning false: nodeGroups.length !== timeNodes.length');
     return false;
   }
 
@@ -666,7 +706,13 @@ export function updateLifecycleView(markdown: string, container: HTMLElement): b
     marker.innerHTML = renderTimelineMarkerHtml(timeNode, isBasicInfoOnly);
 
     const stageElements = nodeGroup.querySelectorAll('.lifecycle-stage');
+    console.log(
+      `[updateLifecycleView] nodeIndex=${nodeIndex}, stageElements.length=${stageElements.length}, timeNode.stages.length=${timeNode.stages.length}`
+    );
     if (stageElements.length !== timeNode.stages.length) {
+      console.log(
+        `[updateLifecycleView] Returning false: stageElements.length !== timeNode.stages.length at nodeIndex=${nodeIndex}`
+      );
       return false;
     }
 
@@ -676,6 +722,9 @@ export function updateLifecycleView(markdown: string, container: HTMLElement): b
         `.lifecycle-stage[data-stage-index="${stageIndex}"]`
       );
       if (!stageElement) {
+        console.log(
+          `[updateLifecycleView] Returning false: stageElement not found at nodeIndex=${nodeIndex}, stageIndex=${stageIndex}`
+        );
         return false;
       }
 
@@ -714,6 +763,9 @@ export function updateLifecycleView(markdown: string, container: HTMLElement): b
 
       const body = stageElement.querySelector<HTMLElement>('.stage-body');
       if (!body) {
+        console.log(
+          `[updateLifecycleView] Returning false: body element not found at nodeIndex=${nodeIndex}, stageIndex=${stageIndex}`
+        );
         return false;
       }
 
@@ -758,15 +810,24 @@ export function updateLifecycleView(markdown: string, container: HTMLElement): b
       // 在更新内容之前，先捕获子章节的展开状态
       const subsectionStates = new Map<string, boolean>();
       const existingSubsections = body.querySelectorAll('.stage-subsection');
+      console.log(
+        `[updateLifecycleView] Capturing subsection states for nodeIndex=${nodeIndex}, stageIndex=${stageIndex}, existingSubsections.count=${existingSubsections.length}`
+      );
       existingSubsections.forEach(subsection => {
         const heading = subsection.querySelector(subsectionHeadingSelector);
         if (heading) {
           const titleText =
             heading.getAttribute('data-heading-title') || heading.textContent?.trim() || '';
           const isExpanded = subsection.classList.contains('expanded');
+          console.log(
+            `[updateLifecycleView] Captured subsection state: title="${titleText}", isExpanded=${isExpanded}`
+          );
           subsectionStates.set(titleText, isExpanded);
         }
       });
+      console.log(
+        `[updateLifecycleView] Total captured subsection states: ${subsectionStates.size}`
+      );
 
       if (stage.content.trim()) {
         body.innerHTML = `${ensureHljsClass(renderMarkdown(stage.content.trim()))}`;
@@ -781,6 +842,7 @@ export function updateLifecycleView(markdown: string, container: HTMLElement): b
     }
   }
 
+  console.log('[updateLifecycleView] Completed successfully, returning true');
   return true;
 }
 
