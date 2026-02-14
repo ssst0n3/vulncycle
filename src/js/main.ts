@@ -2,6 +2,7 @@ import '../styles/main.css';
 import 'highlight.js/styles/github-dark.css';
 import '../types/version.d.ts';
 import { initEditor } from './editor.js';
+import { logger } from './logger.js';
 import {
   renderLifecycleView,
   renderExploitabilityView,
@@ -126,26 +127,21 @@ function getSubsectionKey(subsection: Element): string {
 }
 
 function captureLifecycleState(container: HTMLElement): LifecycleViewState {
-  console.log('[captureLifecycleState] Starting...');
   const expandedStageKeys = new Set<string>();
   const expandedSubsectionKeys = new Set<string>();
 
   // 捕获主章节状态
   const stageElements = container.querySelectorAll('.lifecycle-stage.expanded');
-  console.log('[captureLifecycleState] Found expanded stages:', stageElements.length);
   stageElements.forEach(stage => {
     const key = getLifecycleStageKey(stage);
-    console.log('[captureLifecycleState] Captured stage key:', key);
     expandedStageKeys.add(key);
   });
 
   // 捕获子章节状态
   const subsectionElements = container.querySelectorAll('.stage-subsection.expanded');
-  console.log('[captureLifecycleState] Found expanded subsections:', subsectionElements.length);
   subsectionElements.forEach(subsection => {
     const key = getSubsectionKey(subsection);
     if (key) {
-      console.log('[captureLifecycleState] Captured subsection key:', key);
       expandedSubsectionKeys.add(key);
     }
   });
@@ -155,31 +151,16 @@ function captureLifecycleState(container: HTMLElement): LifecycleViewState {
     expandedSubsectionKeys,
     scrollTop: container.scrollTop,
   };
-  console.log(
-    '[captureLifecycleState] Completed, total expanded stages:',
-    expandedStageKeys.size,
-    ', subsections:',
-    expandedSubsectionKeys.size
-  );
   return state;
 }
 
 function restoreLifecycleState(container: HTMLElement, state: LifecycleViewState): void {
-  console.log('[restoreLifecycleState] Starting restoration...');
-  console.log('[restoreLifecycleState] State to restore:', {
-    expandedStageKeys: Array.from(state.expandedStageKeys),
-    expandedSubsectionKeys: Array.from(state.expandedSubsectionKeys),
-    scrollTop: state.scrollTop,
-  });
-
   // 恢复主章节状态
   const stageElements = container.querySelectorAll('.lifecycle-stage');
-  console.log('[restoreLifecycleState] Total stage elements:', stageElements.length);
   let restoredStages = 0;
   stageElements.forEach(stage => {
     const key = getLifecycleStageKey(stage);
     if (state.expandedStageKeys.has(key)) {
-      console.log('[restoreLifecycleState] Restoring expanded stage:', key);
       stage.classList.remove('collapsed');
       stage.classList.add('expanded');
       restoredStages++;
@@ -189,17 +170,13 @@ function restoreLifecycleState(container: HTMLElement, state: LifecycleViewState
       icon.textContent = stage.classList.contains('collapsed') ? '▼' : '▲';
     }
   });
-  console.log('[restoreLifecycleState] Restored', restoredStages, 'stages');
-
   // 恢复子章节状态
   const subsectionElements = container.querySelectorAll('.stage-subsection');
-  console.log('[restoreLifecycleState] Total subsection elements:', subsectionElements.length);
   let restoredSubsections = 0;
   subsectionElements.forEach(subsection => {
     const key = getSubsectionKey(subsection);
     if (key) {
       if (state.expandedSubsectionKeys.has(key)) {
-        console.log('[restoreLifecycleState] Restoring expanded subsection:', key);
         subsection.classList.remove('collapsed');
         subsection.classList.add('expanded');
         const icon = subsection.querySelector('.stage-subsection-toggle-icon');
@@ -210,33 +187,21 @@ function restoreLifecycleState(container: HTMLElement, state: LifecycleViewState
       }
     }
   });
-  console.log('[restoreLifecycleState] Restored', restoredSubsections, 'subsections');
 
   container.scrollTop = state.scrollTop;
-  console.log('[restoreLifecycleState] Completed, scrollTop set to:', state.scrollTop);
 }
 
 // 渲染当前视图
 function renderCurrentView(markdown: string, container: HTMLElement): void {
-  console.log('[renderCurrentView] Called, currentView:', currentView);
   const initialScrollTop = container.scrollTop;
   let lifecycleState: LifecycleViewState | null = null;
 
   if (currentView === 'lifecycle') {
-    console.log('[renderCurrentView] Trying updateLifecycleView...');
     const updateResult = updateLifecycleView(markdown, container);
-    console.log('[renderCurrentView] updateLifecycleView returned:', updateResult);
     if (updateResult) {
-      console.log('[renderCurrentView] updateLifecycleView succeeded, returning');
       return;
     }
-    console.log('[renderCurrentView] updateLifecycleView failed, capturing lifecycle state...');
     lifecycleState = captureLifecycleState(container);
-    console.log('[renderCurrentView] Captured lifecycle state:', {
-      expandedStageKeys: Array.from(lifecycleState.expandedStageKeys),
-      expandedSubsectionKeys: Array.from(lifecycleState.expandedSubsectionKeys),
-      scrollTop: lifecycleState.scrollTop,
-    });
   }
 
   if (currentView === 'lifecycle') {
@@ -252,11 +217,8 @@ function renderCurrentView(markdown: string, container: HTMLElement): void {
   }
 
   if (currentView === 'lifecycle' && lifecycleState) {
-    console.log('[renderCurrentView] Restoring lifecycle state...');
     restoreLifecycleState(container, lifecycleState);
-    console.log('[renderCurrentView] Lifecycle state restored');
   } else {
-    console.log('[renderCurrentView] Setting scrollTop to:', initialScrollTop);
     container.scrollTop = initialScrollTop;
   }
 
@@ -278,7 +240,7 @@ function initApp(): void {
   const previewContent = document.getElementById('preview-content');
 
   if (!editorContainer || !previewContent) {
-    console.error('Required DOM elements not found');
+    logger.error('Required DOM elements not found');
     return;
   }
 
@@ -349,7 +311,7 @@ function initViewSwitcher(editor: EditorView, previewContent: HTMLElement): void
   const completionBtn = document.getElementById('completion-view-btn');
 
   if (!lifecycleBtn || !exploitabilityBtn || !intelligenceBtn || !analysisBtn || !completionBtn) {
-    console.error('View switcher buttons not found');
+    logger.error('View switcher buttons not found');
     return;
   }
 
@@ -554,7 +516,7 @@ async function handleCopyCode(button: HTMLButtonElement, codeText: string): Prom
     await navigator.clipboard.writeText(codeText);
     showCopySuccess(button);
   } catch (err) {
-    console.error('Failed to copy code:', err);
+    logger.error('Failed to copy code:', err);
     // Fallback: 使用传统的复制方法
     const textArea = document.createElement('textarea');
     textArea.value = codeText;
@@ -566,7 +528,7 @@ async function handleCopyCode(button: HTMLButtonElement, codeText: string): Prom
       document.execCommand('copy');
       showCopySuccess(button);
     } catch (fallbackErr) {
-      console.error('Fallback copy failed:', fallbackErr);
+      logger.error('Fallback copy failed:', fallbackErr);
     }
     document.body.removeChild(textArea);
   }
@@ -729,7 +691,7 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
     !loadBtn ||
     !statusEl
   ) {
-    console.error('GitHub integration elements not found');
+    logger.error('GitHub integration elements not found');
     return;
   }
 
@@ -1157,7 +1119,7 @@ function initHistoryModal(editor: EditorView, previewContent: HTMLElement): void
   ) as HTMLElement[];
 
   if (!historyBtn || !modal || !listContainer || !diffContent || !restoreBtn) {
-    console.error('History modal elements not found');
+    logger.error('History modal elements not found');
     return;
   }
 
@@ -1450,7 +1412,7 @@ function initFullscreen(): void {
   const editorContainer = document.getElementById('editor-container');
 
   if (!fullscreenBtn || !editorContainer) {
-    console.error('Fullscreen elements not found');
+    logger.error('Fullscreen elements not found');
     return;
   }
 
@@ -1459,12 +1421,12 @@ function initFullscreen(): void {
     if (!document.fullscreenElement) {
       // 进入全屏
       editorContainer.requestFullscreen().catch(err => {
-        console.error('Error attempting to enable fullscreen:', err);
+        logger.error('Error attempting to enable fullscreen:', err);
       });
     } else {
       // 退出全屏
       document.exitFullscreen().catch(err => {
-        console.error('Error attempting to exit fullscreen:', err);
+        logger.error('Error attempting to exit fullscreen:', err);
       });
     }
   });
@@ -1488,7 +1450,7 @@ function initTimelineToggle(): void {
   ) as HTMLButtonElement | null;
 
   if (!timelineToggleBtn) {
-    console.error('Timeline toggle button not found');
+    logger.error('Timeline toggle button not found');
     return;
   }
 

@@ -3,6 +3,8 @@
  * 提供 LocalStorage 自动保存和文件下载功能
  */
 
+import { logger } from './logger.js';
+
 // 存储键名
 const STORAGE_KEY = 'vulncycleinsight_content';
 const STORAGE_TIMESTAMP_KEY = 'vulncycleinsight_timestamp';
@@ -39,7 +41,7 @@ export class StorageManager {
       this.lastContent = content;
       this.addHistoryEntry(content);
     } catch (error) {
-      console.error('保存到 LocalStorage 失败:', error);
+      logger.error('保存到 LocalStorage 失败:', error);
       // 如果存储空间不足，尝试清理旧数据
       if (error instanceof DOMException && error.name === 'QuotaExceededError') {
         this.clearStorage();
@@ -49,7 +51,7 @@ export class StorageManager {
           this.lastContent = content;
           this.addHistoryEntry(content);
         } catch (retryError) {
-          console.error('重试保存失败:', retryError);
+          logger.error('重试保存失败:', retryError);
         }
       }
     }
@@ -62,7 +64,7 @@ export class StorageManager {
     try {
       return localStorage.getItem(STORAGE_KEY);
     } catch (error) {
-      console.error('从 LocalStorage 加载失败:', error);
+      logger.error('从 LocalStorage 加载失败:', error);
       return null;
     }
   }
@@ -75,7 +77,7 @@ export class StorageManager {
       const timestamp = localStorage.getItem(STORAGE_TIMESTAMP_KEY);
       return timestamp ? new Date(timestamp) : null;
     } catch (error) {
-      console.error('获取保存时间失败:', error);
+      logger.error('获取保存时间失败:', error);
       return null;
     }
   }
@@ -90,7 +92,7 @@ export class StorageManager {
       localStorage.removeItem(STORAGE_HISTORY_KEY);
       this.lastContent = '';
     } catch (error) {
-      console.error('清除存储失败:', error);
+      logger.error('清除存储失败:', error);
     }
   }
 
@@ -120,23 +122,23 @@ export class StorageManager {
 
       // 创建 Blob 对象
       const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
-      
+
       // 创建下载链接
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.download = filename;
       link.style.display = 'none';
-      
+
       // 触发下载
       document.body.appendChild(link);
       link.click();
-      
+
       // 清理
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('下载文件失败:', error);
+      logger.error('下载文件失败:', error);
       alert('下载文件失败，请重试');
     }
   }
@@ -144,12 +146,9 @@ export class StorageManager {
   /**
    * 启动自动保存
    */
-  startAutoSave(
-    getContent: () => string,
-    onStatusChange?: (status: SaveStatus) => void
-  ): void {
+  startAutoSave(getContent: () => string, onStatusChange?: (status: SaveStatus) => void): void {
     this.saveStatusCallback = onStatusChange || null;
-    
+
     // 立即保存一次
     const initialContent = getContent();
     if (initialContent) {
@@ -222,7 +221,7 @@ export class StorageManager {
    */
   getHistoryEntry(id: string): HistoryEntry | null {
     const entries = this.readHistoryEntries();
-    return entries.find((entry) => entry.id === id) ?? null;
+    return entries.find(entry => entry.id === id) ?? null;
   }
 
   /**
@@ -242,9 +241,9 @@ export class StorageManager {
       if (!raw) return [];
       const parsed = JSON.parse(raw);
       if (!Array.isArray(parsed)) return [];
-      return parsed.filter((entry) => this.isValidHistoryEntry(entry));
+      return parsed.filter(entry => this.isValidHistoryEntry(entry));
     } catch (error) {
-      console.error('读取历史版本失败:', error);
+      logger.error('读取历史版本失败:', error);
       return [];
     }
   }
@@ -271,7 +270,7 @@ export class StorageManager {
       const nextEntries = [entry, ...entries].slice(0, MAX_HISTORY_ENTRIES);
       this.writeHistoryEntries(nextEntries);
     } catch (error) {
-      console.error('保存历史版本失败:', error);
+      logger.error('保存历史版本失败:', error);
     }
   }
 
@@ -284,7 +283,7 @@ export class StorageManager {
         try {
           localStorage.setItem(STORAGE_HISTORY_KEY, JSON.stringify(trimmedEntries));
         } catch (retryError) {
-          console.error('保存历史版本失败:', retryError);
+          logger.error('保存历史版本失败:', retryError);
         }
         return;
       }
@@ -295,4 +294,3 @@ export class StorageManager {
 
 // 导出单例实例
 export const storageManager = new StorageManager();
-

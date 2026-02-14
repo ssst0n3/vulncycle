@@ -1,4 +1,5 @@
 import type { GithubMode } from './githubClient.js';
+import { logger } from './logger.js';
 
 const STORAGE_KEY = 'vci_github_config';
 
@@ -39,7 +40,7 @@ export function loadGithubConfig(): GithubConfig {
       token: parsed.rememberToken ? (parsed.token ?? '') : '',
     };
   } catch (error) {
-    console.error('Failed to load GitHub config:', error);
+    logger.error('Failed to load GitHub config:', error);
     return { ...DEFAULT_CONFIG };
   }
 }
@@ -50,7 +51,7 @@ export function saveGithubConfig(config: GithubConfig): void {
     const payload = { ...config, token: persistToken };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   } catch (error) {
-    console.error('Failed to save GitHub config:', error);
+    logger.error('Failed to save GitHub config:', error);
   }
 }
 
@@ -63,7 +64,7 @@ export function clearGithubToken(): void {
     parsed.rememberToken = false;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
   } catch (error) {
-    console.error('Failed to clear GitHub token:', error);
+    logger.error('Failed to clear GitHub token:', error);
   }
 }
 
