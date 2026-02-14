@@ -7,8 +7,9 @@ export const STAGE_KEYWORDS: Record<string, number> = {
   漏洞修复: 5,
   漏洞公告: 6,
   漏洞情报: 7,
-  漏洞利用: 8,
-  防护: 9,
+  漏洞分析: 8,
+  漏洞利用: 9,
+  防护: 10,
 };
 
 // 从标题中提取阶段编号
@@ -17,7 +18,7 @@ export function extractStageNumber(title: string): number | null {
   const match = title.match(/^(\d+)\.?\s*.+$/);
   if (match) {
     const num = parseInt(match[1], 10);
-    if (num >= 1 && num <= 9) {
+    if (num >= 1 && num <= 10) {
       return num;
     }
   }
@@ -31,4 +32,3 @@ export function extractStageNumber(title: string): number | null {
 
   return null;
 }
-

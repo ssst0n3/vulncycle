@@ -16,6 +16,7 @@
   --gradient-stage-7: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
   --gradient-stage-8: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
   --gradient-stage-9: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+  --gradient-stage-10: linear-gradient(135deg, #c3f0ff 0%, #7ab8ff 100%);
 
   /* 边框颜色 */
   --border-color-stage-1: #667eea;
@@ -27,6 +28,7 @@
   --border-color-stage-7: #fed6e3;
   --border-color-stage-8: #ff9a9e;
   --border-color-stage-9: #fcb69f;
+  --border-color-stage-10: #7ab8ff;
 
   /* 背景色 */
   --bg-primary: #ffffff;
@@ -2452,6 +2454,16 @@ header h1 {
   background: var(--gradient-stage-9);
 }
 
+.lifecycle-stage[data-stage='10'] .stage-card {
+  border-left-color: var(--border-color-stage-10);
+}
+.lifecycle-stage[data-stage='10'] .stage-card::before {
+  background: var(--gradient-stage-10);
+}
+.lifecycle-stage[data-stage='10'] .stage-number-badge {
+  background: var(--gradient-stage-10);
+}
+
 /* 时间节点组的颜色标识（基于第一个阶段） */
 .timeline-node-group:has(.lifecycle-stage[data-stage='1']) .timeline-dot {
   background: var(--gradient-stage-1);
@@ -2507,6 +2519,12 @@ header h1 {
     0 0 0 4px rgba(252, 182, 159, 0.2),
     0 4px 16px rgba(252, 182, 159, 0.4);
 }
+.timeline-node-group:has(.lifecycle-stage[data-stage='10']) .timeline-dot {
+  background: var(--gradient-stage-10);
+  box-shadow:
+    0 0 0 4px rgba(122, 184, 255, 0.2),
+    0 4px 16px rgba(122, 184, 255, 0.4);
+}
 
 /* 时间节点组的头部卡片颜色 */
 .timeline-node-group:has(.lifecycle-stage[data-stage='1']) .timeline-header-card {
@@ -2544,6 +2562,10 @@ header h1 {
 .timeline-node-group:has(.lifecycle-stage[data-stage='9']) .timeline-header-card {
   border-left-color: var(--border-color-stage-9);
   background: linear-gradient(135deg, rgba(255, 236, 210, 0.1) 0%, rgba(252, 182, 159, 0.1) 100%);
+}
+.timeline-node-group:has(.lifecycle-stage[data-stage='10']) .timeline-header-card {
+  border-left-color: var(--border-color-stage-10);
+  background: linear-gradient(135deg, rgba(195, 240, 255, 0.1) 0%, rgba(122, 184, 255, 0.1) 100%);
 }
 
 /* 响应式设计 */
@@ -3551,6 +3573,9 @@ pre {
 
 .completion-stage-number[data-stage='9'] {
   background: var(--gradient-stage-9);
+}
+.completion-stage-number[data-stage='10'] {
+  background: var(--gradient-stage-10);
 }
 
 .completion-stage-title {

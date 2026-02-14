@@ -1014,13 +1014,13 @@ interface ExploitabilitySection {
   content: string;
 }
 
-// 提取漏洞利用阶段（第8节）的内容
+// 提取漏洞利用阶段（第9节）的内容
 function extractExploitabilityContent(markdown: string): {
   title: string;
   sections: ExploitabilitySection[];
 } {
   const stages = parseLifecycleStages(markdown);
-  const exploitStage = stages.find(stage => stage.stageNum === 8);
+  const exploitStage = stages.find(stage => stage.stageNum === 9);
 
   if (!exploitStage) {
     return {
@@ -1098,7 +1098,7 @@ export function renderExploitabilityView(markdown: string, container: HTMLElemen
   if (sections.length === 0) {
     html += '<div class="exploitability-empty">';
     html +=
-      '<p style="text-align: center; color: #999; padding: 40px;">未找到漏洞利用相关内容，请确保文档包含第8节"漏洞利用"的内容。</p>';
+      '<p style="text-align: center; color: #999; padding: 40px;">未找到漏洞利用相关内容，请确保文档包含第9节"漏洞利用"的内容。</p>';
     html += '</div>';
   } else {
     html += '<div class="exploitability-sections">';
@@ -1636,7 +1636,7 @@ export function renderCompletionView(markdown: string, container: HTMLElement): 
     }
   });
 
-  // 确保所有9个阶段都有数据（即使不存在也显示为0%）
+  // 确保所有10个阶段都有数据（即使不存在也显示为0%）
   const STAGE_KEYWORDS: Record<string, number> = {
     基本信息: 1,
     漏洞引入: 2,
@@ -1645,12 +1645,13 @@ export function renderCompletionView(markdown: string, container: HTMLElement): 
     漏洞修复: 5,
     漏洞公告: 6,
     漏洞情报: 7,
-    漏洞利用: 8,
-    防护: 9,
+    漏洞分析: 8,
+    漏洞利用: 9,
+    防护: 10,
   };
 
   const allStages: StageCompletion[] = [];
-  for (let i = 1; i <= 9; i++) {
+  for (let i = 1; i <= 10; i++) {
     const existing = completions.find(c => c.stageNum === i);
     if (existing) {
       allStages.push(existing);
