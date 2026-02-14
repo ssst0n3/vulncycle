@@ -1329,7 +1329,7 @@ interface StageCompletion {
   details: {
     totalSubsections: number;
     completedSubsections: number;
-    metadataScore: number;
+    metadataCompletionPercent: number;
   };
 }
 
@@ -1573,8 +1573,9 @@ function calculateStageCompletion(stage: LifecycleStage): StageCompletion {
     return false;
   }
 
-  // 元数据完成度（作为额外加分，最多20分）
-  let metadataScore = 0;
+  // 元数据完成度（作为固定20%权重参与计算）
+  const metadataWeight = 0.2;
+  let metadataCompletionPercent = 0;
   let hasMetadata = false;
   let metadataComplete = false;
   let completeMetadataItems = 0;
@@ -1588,13 +1589,15 @@ function calculateStageCompletion(stage: LifecycleStage): StageCompletion {
     // 只有当存在有效（非占位符）元数据项时，才认为有元数据
     hasMetadata = completeMetadataItems > 0;
 
-    // 元数据完成度转换为0-20分
-    metadataScore = Math.round((completeMetadataItems / Math.max(totalItems, 1)) * 20);
+    // 元数据完成度转换为0-100
+    metadataCompletionPercent = Math.round((completeMetadataItems / Math.max(totalItems, 1)) * 100);
     metadataComplete = completeMetadataItems === totalItems && totalItems > 0;
   }
 
-  // 最终完成度：子章节完成度 + 元数据加分（但不超过100%）
-  const finalCompletion = Math.min(100, completion + metadataScore);
+  // 最终完成度：子章节完成度占80%，元数据完成度占20%
+  const finalCompletion = isBasicInfoStage
+    ? completion
+    : Math.round(completion * (1 - metadataWeight) + metadataCompletionPercent * metadataWeight);
 
   return {
     stageNum: stage.stageNum ?? 0,
@@ -1608,7 +1611,7 @@ function calculateStageCompletion(stage: LifecycleStage): StageCompletion {
     details: {
       totalSubsections,
       completedSubsections,
-      metadataScore,
+      metadataCompletionPercent,
     },
   };
 }
@@ -1667,7 +1670,7 @@ export function renderCompletionView(markdown: string, container: HTMLElement): 
         details: {
           totalSubsections: 0,
           completedSubsections: 0,
-          metadataScore: 0,
+          metadataCompletionPercent: 0,
         },
       });
     }
@@ -1755,7 +1758,7 @@ export function renderCompletionView(markdown: string, container: HTMLElement): 
       if (completion.hasMetadata) {
         html += `<span class="completion-detail-value ${completion.metadataComplete ? 'complete' : 'partial'}">`;
         html += completion.metadataComplete ? '✓ 完整' : '⚠ 部分填写';
-        html += ` (+${completion.details.metadataScore}%)</span>`;
+        html += ' (20%)</span>';
       } else {
         html += '<span class="completion-detail-value incomplete">✗ 未填写</span>';
       }
