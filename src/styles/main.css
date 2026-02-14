@@ -2058,6 +2058,114 @@ header h1 {
   box-shadow: none;
 }
 
+/* 代码块包装器 - 用于复制功能 */
+.code-block-wrapper {
+  position: relative;
+  margin: var(--spacing-sm) 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(102, 126, 234, 0.1) inset;
+  transition: all var(--transition-normal);
+}
+
+.code-block-wrapper:hover {
+  box-shadow:
+    0 6px 16px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(102, 126, 234, 0.2) inset;
+  transform: translateY(-2px);
+}
+
+.code-block-wrapper pre {
+  margin: 0 !important;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg) !important;
+  border-top: none !important;
+}
+
+/* 代码块头部 */
+.code-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
+  border: 1px solid rgba(102, 126, 234, 0.3);
+  border-bottom: none;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.code-block-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--color-primary) 0%,
+    var(--color-secondary) 50%,
+    var(--color-primary) 100%
+  );
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  opacity: 0.6;
+}
+
+.code-block-lang {
+  font-size: 0.75em;
+  font-weight: 600;
+  color: #8b8b8b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-family: var(--font-family-mono);
+}
+
+/* 复制按钮 */
+.code-block-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 0.75em;
+  font-weight: 500;
+  color: #abb2bf;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  position: relative;
+  z-index: 1;
+}
+
+.code-block-copy-btn:hover {
+  color: #fff;
+  background: rgba(102, 126, 234, 0.2);
+  border-color: rgba(102, 126, 234, 0.4);
+}
+
+.code-block-copy-btn:active {
+  transform: scale(0.95);
+}
+
+.code-block-copy-btn.copied {
+  color: #4ec9b0;
+  background: rgba(78, 201, 176, 0.15);
+  border-color: rgba(78, 201, 176, 0.3);
+}
+
+.code-block-copy-btn svg {
+  flex-shrink: 0;
+}
+
+/* 其他视图中的代码块样式 */
+.exploitability-section-content .code-block-wrapper,
+.intelligence-content .code-block-wrapper,
+.analysis-section-content .code-block-wrapper {
+  margin: var(--spacing-sm) 0;
+}
+
 /* Highlight.js 语法高亮样式覆盖 - 适配深色代码块背景 */
 /* 匹配有 hljs 类或 language- 类的 code 标签 */
 .stage-body pre code.hljs,

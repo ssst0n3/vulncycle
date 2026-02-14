@@ -19,7 +19,7 @@ export function escapeHtml(text: string): string {
 // 确保代码块有 hljs 类（后处理函数）
 function ensureHljsClass(html: string): string {
   // 使用正则表达式为所有 code 标签添加 hljs 类（如果还没有）
-  return html.replace(/<code\s+class="([^"]*language-[^"]*)"([^>]*)>/g, (match, classes, rest) => {
+  return html.replace(/<code\s+class="([^"]*)language-[^"]*"([^>]*)>/g, (match, classes, rest) => {
     // 如果已经有 hljs 类，不重复添加
     if (classes.includes('hljs')) {
       return match;
@@ -27,6 +27,76 @@ function ensureHljsClass(html: string): string {
     // 添加 hljs 类
     return `<code class="hljs ${classes}"${rest}>`;
   });
+}
+
+const COPY_BUTTON_TEMPLATE = `
+  <svg class="copy-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+  </svg>
+  <svg class="check-icon" viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
+    <polyline points="20 6 9 17 4 12"></polyline>
+  </svg>
+`;
+
+function getCodeBlockLanguage(codeEl: Element): string {
+  const languageClass = Array.from(codeEl.classList).find(className =>
+    className.startsWith('language-')
+  );
+  if (languageClass) {
+    const language = languageClass.replace('language-', '').trim();
+    if (language) {
+      return language;
+    }
+  }
+  const dataLanguage = codeEl.getAttribute('data-language');
+  return dataLanguage && dataLanguage.trim() ? dataLanguage.trim() : 'text';
+}
+
+function createCopyButton(): HTMLButtonElement {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'code-block-copy-btn';
+  button.title = '复制代码';
+  button.setAttribute('aria-label', '复制代码');
+  button.innerHTML = COPY_BUTTON_TEMPLATE;
+  return button;
+}
+
+// 为代码块添加头部（包含语言标签和复制按钮）
+function wrapCodeBlocks(html: string): string {
+  const container = document.createElement('div');
+  container.innerHTML = html;
+
+  const codeBlocks = Array.from(container.querySelectorAll('pre > code'));
+  codeBlocks.forEach(codeEl => {
+    const pre = codeEl.parentElement;
+    const parent = pre?.parentElement;
+    if (!pre || !parent) {
+      return;
+    }
+
+    if (parent.classList.contains('code-block-wrapper')) {
+      return;
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'code-block-wrapper';
+
+    const header = document.createElement('div');
+    header.className = 'code-block-header';
+    const langLabel = document.createElement('span');
+    langLabel.className = 'code-block-lang';
+    langLabel.textContent = getCodeBlockLanguage(codeEl);
+    header.appendChild(langLabel);
+    header.appendChild(createCopyButton());
+
+    parent.insertBefore(wrapper, pre);
+    wrapper.appendChild(header);
+    wrapper.appendChild(pre);
+  });
+
+  return container.innerHTML;
 }
 
 // 时间信息接口
@@ -439,7 +509,8 @@ const renderMarkdown = (markdown: string): string => {
   if (rendered instanceof Promise) {
     throw new Error('Markdown rendering unexpectedly returned a Promise');
   }
-  return rendered;
+  // 先添加 hljs 类，再包装代码块
+  return wrapCodeBlocks(ensureHljsClass(rendered));
 };
 
 // 解析 Markdown 链接格式 [text](url)
@@ -830,7 +901,7 @@ export function updateLifecycleView(markdown: string, container: HTMLElement): b
       );
 
       if (stage.content.trim()) {
-        body.innerHTML = `${ensureHljsClass(renderMarkdown(stage.content.trim()))}`;
+        body.innerHTML = `${renderMarkdown(stage.content.trim())}`;
       } else {
         body.innerHTML = '<p class="stage-empty">暂无内容</p>';
       }
@@ -884,7 +955,7 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
     const content = contentLines.join('\n').trim();
     html += '<div class="lifecycle-stages">';
     if (content) {
-      html += `<div class="stage-content">${ensureHljsClass(renderMarkdown(content))}</div>`;
+      html += `<div class="stage-content">${renderMarkdown(content)}</div>`;
     } else {
       html +=
         '<div class="stage-content"><p style="text-align: center; color: #999; padding: 40px;">请在左侧输入 Markdown 内容...</p></div>';
@@ -968,7 +1039,7 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
 
         // 阶段内容
         if (content) {
-          html += `<div class="stage-body">${ensureHljsClass(renderMarkdown(content))}</div>`;
+          html += `<div class="stage-body">${renderMarkdown(content)}</div>`;
         } else {
           html += '<div class="stage-body"><p class="stage-empty">暂无内容</p></div>';
         }
@@ -1098,7 +1169,7 @@ export function renderExploitabilityView(markdown: string, container: HTMLElemen
       html += '</div>';
 
       if (section.content.trim()) {
-        html += `<div class="exploitability-section-content">${ensureHljsClass(renderMarkdown(section.content))}</div>`;
+        html += `<div class="exploitability-section-content">${renderMarkdown(section.content)}</div>`;
       } else {
         html +=
           '<div class="exploitability-section-content"><p class="section-empty">暂无内容</p></div>';
@@ -1157,7 +1228,7 @@ export function renderIntelligenceView(markdown: string, container: HTMLElement)
     html += '</div>';
   } else {
     html += '<div class="intelligence-content">';
-    html += `${ensureHljsClass(renderMarkdown(content))}`;
+    html += `${renderMarkdown(content)}`;
     html += '</div>';
   }
 
@@ -1220,7 +1291,7 @@ export function renderAnalysisView(markdown: string, container: HTMLElement): vo
       html += '</div>';
 
       if (stage.content) {
-        html += `<div class="analysis-section-content">${ensureHljsClass(renderMarkdown(stage.content))}</div>`;
+        html += `<div class="analysis-section-content">${renderMarkdown(stage.content)}</div>`;
       } else {
         html += '<div class="analysis-section-content"><p class="section-empty">暂无内容</p></div>';
       }

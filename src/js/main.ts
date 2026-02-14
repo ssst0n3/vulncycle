@@ -474,6 +474,22 @@ function initStageToggle(previewContent: HTMLElement, editor: EditorView): void 
   previewContent.addEventListener('click', event => {
     const target = event.target as HTMLElement | null;
 
+    // 处理复制按钮点击
+    const copyBtn = target?.closest('.code-block-copy-btn') as HTMLButtonElement | null;
+    if (copyBtn) {
+      const wrapper = copyBtn.closest('.code-block-wrapper');
+      if (wrapper) {
+        const codeElement = wrapper.querySelector('pre code');
+        if (codeElement) {
+          const codeText = codeElement.textContent || '';
+          void handleCopyCode(copyBtn, codeText);
+        }
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+
     const anchorBtn = target?.closest(
       '.stage-anchor-btn, .stage-heading-anchor-btn'
     ) as HTMLButtonElement | null;
@@ -530,6 +546,47 @@ function initStageToggle(previewContent: HTMLElement, editor: EditorView): void 
       icon.textContent = stage.classList.contains('collapsed') ? '▼' : '▲';
     }
   });
+}
+
+// 处理代码复制
+async function handleCopyCode(button: HTMLButtonElement, codeText: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(codeText);
+    showCopySuccess(button);
+  } catch (err) {
+    console.error('Failed to copy code:', err);
+    // Fallback: 使用传统的复制方法
+    const textArea = document.createElement('textarea');
+    textArea.value = codeText;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-9999px';
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      showCopySuccess(button);
+    } catch (fallbackErr) {
+      console.error('Fallback copy failed:', fallbackErr);
+    }
+    document.body.removeChild(textArea);
+  }
+}
+
+// 显示复制成功状态
+function showCopySuccess(button: HTMLButtonElement): void {
+  const copyIcon = button.querySelector('.copy-icon') as SVGElement | null;
+  const checkIcon = button.querySelector('.check-icon') as SVGElement | null;
+
+  button.classList.add('copied');
+  if (copyIcon) copyIcon.style.display = 'none';
+  if (checkIcon) checkIcon.style.display = 'inline-block';
+
+  // 2秒后恢复
+  setTimeout(() => {
+    button.classList.remove('copied');
+    if (copyIcon) copyIcon.style.display = 'inline-block';
+    if (checkIcon) checkIcon.style.display = 'none';
+  }, 2000);
 }
 
 // 初始化保存功能
