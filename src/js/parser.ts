@@ -39,16 +39,69 @@ export function parseLifecycleStages(markdown: string): LifecycleStage[] {
   let currentContent: string[] = [];
   let currentHeadings: StageHeading[] = [];
   let inFrontMatter = false;
+  let frontMatterResolved = false;
+  let seenNonEmptyBeforeFrontMatter = false;
+  let inFencedCodeBlock = false;
+  let fenceMarker: '`' | '~' | null = null;
+  let fenceLength = 0;
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    const trimmedLine = line.trim();
 
-    // 处理 front matter
-    if (line.match(/^---\s*$/)) {
-      inFrontMatter = !inFrontMatter;
+    // 处理 front matter（仅文档开头位置生效）
+    if (!frontMatterResolved) {
+      if (!seenNonEmptyBeforeFrontMatter && trimmedLine.length === 0) {
+        continue;
+      }
+
+      if (!seenNonEmptyBeforeFrontMatter && trimmedLine.match(/^---\s*$/)) {
+        inFrontMatter = true;
+        frontMatterResolved = true;
+        continue;
+      }
+
+      if (trimmedLine.length > 0) {
+        seenNonEmptyBeforeFrontMatter = true;
+        frontMatterResolved = true;
+      }
+    }
+
+    if (inFrontMatter) {
+      if (trimmedLine.match(/^---\s*$/)) {
+        inFrontMatter = false;
+      }
       continue;
     }
-    if (inFrontMatter) {
+
+    const fenceOpenMatch = line.match(/^ {0,3}(`{3,}|~{3,})(.*)$/);
+    if (!inFencedCodeBlock && fenceOpenMatch) {
+      inFencedCodeBlock = true;
+      fenceMarker = fenceOpenMatch[1][0] as '`' | '~';
+      fenceLength = fenceOpenMatch[1].length;
+
+      if (currentStage) {
+        currentContent.push(line);
+      }
+      continue;
+    }
+
+    if (inFencedCodeBlock) {
+      const fenceCloseMatch = line.match(/^ {0,3}(`{3,}|~{3,})\s*$/);
+      if (
+        fenceCloseMatch &&
+        fenceMarker &&
+        fenceCloseMatch[1][0] === fenceMarker &&
+        fenceCloseMatch[1].length >= fenceLength
+      ) {
+        inFencedCodeBlock = false;
+        fenceMarker = null;
+        fenceLength = 0;
+      }
+
+      if (currentStage) {
+        currentContent.push(line);
+      }
       continue;
     }
 
