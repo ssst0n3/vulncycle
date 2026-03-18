@@ -1768,15 +1768,15 @@ export function renderCompletionView(markdown: string, container: HTMLElement): 
         html += '<span class="completion-detail-value incomplete">✗ 未填写</span>';
       } else if (completedMetadataItems === totalMetadataItems) {
         html += '<span class="completion-detail-value complete">';
-        html += `✓ 完整 (20%) ${completedMetadataItems}/${totalMetadataItems} (${metadataCompletionPercent}%)`;
+        html += `✓ 完整 ${completedMetadataItems}/${totalMetadataItems} (${metadataCompletionPercent}%)`;
         html += '</span>';
       } else if (completedMetadataItems === 0) {
         html += '<span class="completion-detail-value incomplete">';
-        html += `✗ 未填写 (20%) ${completedMetadataItems}/${totalMetadataItems} (${metadataCompletionPercent}%)`;
+        html += `✗ 未填写 ${completedMetadataItems}/${totalMetadataItems} (${metadataCompletionPercent}%)`;
         html += '</span>';
       } else {
         html += '<span class="completion-detail-value partial">';
-        html += `⚠ 部分填写 (20%) ${completedMetadataItems}/${totalMetadataItems} (${metadataCompletionPercent}%)`;
+        html += `⚠ 部分填写 ${completedMetadataItems}/${totalMetadataItems} (${metadataCompletionPercent}%)`;
         html += '</span>';
       }
       html += '</div>';
