@@ -556,6 +556,125 @@ function renderValueWithMarkdownLinks(value: string): string {
   return `<span class="metadata-value">${result}</span>`;
 }
 
+function isPlaceholderValue(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return true;
+
+  if (
+    trimmed.includes('需要修改') ||
+    trimmed.includes('待填写') ||
+    trimmed.includes('待完成') ||
+    trimmed.includes('待处理') ||
+    trimmed.includes('TBD') ||
+    trimmed.includes('N/A') ||
+    trimmed === '...'
+  ) {
+    return true;
+  }
+
+  const chinesePlaceholders = [
+    '研究者名称',
+    '研究机构/公司',
+    '开发者名称',
+    '研究者',
+    '机构',
+    '公司',
+    '开发者',
+  ];
+  if (
+    chinesePlaceholders.some(
+      placeholder => trimmed === placeholder || trimmed.includes(placeholder)
+    )
+  ) {
+    return true;
+  }
+
+  if (
+    /^YYYY-MM-DD$/i.test(trimmed) ||
+    (trimmed.match(/^\d{4}-\d{2}-\d{2}$/) && trimmed.startsWith('2000-01-01'))
+  ) {
+    return true;
+  }
+
+  if (/^v[XxYyZz]\.([XxYyZz]|\d+)\.([XxYyZz]|\d+)$/i.test(trimmed)) {
+    return true;
+  }
+
+  if (/^(SA|CVE|CWE)-[Xx]{2,}$/i.test(trimmed)) {
+    return true;
+  }
+
+  if (trimmed.includes('example.com') || trimmed.includes('example.org')) {
+    return true;
+  }
+
+  if (
+    /^[a-f0-9]{6,8}$/i.test(trimmed) &&
+    (trimmed.toLowerCase().startsWith('def') ||
+      trimmed.toLowerCase().startsWith('abc') ||
+      trimmed.toLowerCase() === 'commit_sha')
+  ) {
+    return true;
+  }
+
+  const linkMatch = trimmed.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+  if (linkMatch) {
+    const linkText = linkMatch[1].trim();
+    const linkUrl = linkMatch[2].trim();
+
+    const placeholderTexts = [
+      'username',
+      'XXX',
+      'commit_sha',
+      'commit',
+      'sha',
+      '研究者名称',
+      '开发者名称',
+      '研究机构/公司',
+      '研究者',
+      '机构',
+      '公司',
+      '开发者',
+      'vX.X.X',
+      'vX.Y.Z',
+      'SA-XXXX',
+      'def5678',
+      'abc1234',
+    ];
+
+    const normalizedLinkText = linkText.toLowerCase();
+    if (
+      placeholderTexts.some(placeholder => {
+        const normalizedPlaceholder = placeholder.toLowerCase();
+        return (
+          normalizedLinkText === normalizedPlaceholder ||
+          normalizedLinkText === '@' + normalizedPlaceholder ||
+          normalizedLinkText === '#' + normalizedPlaceholder ||
+          normalizedLinkText.includes(normalizedPlaceholder)
+        );
+      })
+    ) {
+      return true;
+    }
+
+    const normalizedUrl = linkUrl.toLowerCase();
+    if (
+      normalizedUrl.includes('/username') ||
+      normalizedUrl.includes('/xxx') ||
+      normalizedUrl.includes('/commit_sha') ||
+      normalizedUrl.includes('/commit/commit') ||
+      normalizedUrl.includes('/pull/xxx') ||
+      normalizedUrl.includes('/org/repo') ||
+      normalizedUrl.includes('example.com') ||
+      normalizedUrl.includes('example.org')
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 // 渲染元数据HTML（仅渲染前几个关键元数据，单行显示）
 function renderMetadataHtml(metadata: StageMetadata | undefined, maxItems: number = 5): string {
   if (!metadata || metadata.items.length === 0) {
@@ -564,7 +683,12 @@ function renderMetadataHtml(metadata: StageMetadata | undefined, maxItems: numbe
 
   // 保持原始输入顺序，不进行排序
   // 按照模板中的顺序显示：合入时间、提交时间、修复版本、修复者...
-  const displayItems = metadata.items.slice(0, maxItems);
+  const validItems = metadata.items.filter(item => !isPlaceholderValue(item.value));
+  const displayItems = validItems.slice(0, maxItems);
+
+  if (displayItems.length === 0) {
+    return '';
+  }
 
   let html = '<div class="stage-metadata">';
 
@@ -1330,6 +1454,9 @@ interface StageCompletion {
     totalSubsections: number;
     completedSubsections: number;
     metadataCompletionPercent: number;
+    totalMetadataItems: number;
+    completedMetadataItems: number;
+    missingMetadataLabels: string[];
   };
 }
 
@@ -1442,156 +1569,25 @@ function calculateStageCompletion(stage: LifecycleStage): StageCompletion {
     completedSubsections = 0;
   }
 
-  // 检查值是否为占位符
-  function isPlaceholderValue(value: string): boolean {
-    const trimmed = value.trim();
-    if (!trimmed) return true;
-
-    // 检查常见的占位符关键词
-    if (
-      trimmed.includes('需要修改') ||
-      trimmed.includes('待填写') ||
-      trimmed.includes('待完成') ||
-      trimmed.includes('待处理') ||
-      trimmed.includes('TBD') ||
-      trimmed.includes('N/A') ||
-      trimmed === '...'
-    ) {
-      return true;
-    }
-
-    // 检查中文占位符文本
-    const chinesePlaceholders = [
-      '研究者名称',
-      '研究机构/公司',
-      '开发者名称',
-      '研究者',
-      '机构',
-      '公司',
-      '开发者',
-    ];
-    if (
-      chinesePlaceholders.some(
-        placeholder => trimmed === placeholder || trimmed.includes(placeholder)
-      )
-    ) {
-      return true;
-    }
-
-    // 检查日期占位符：YYYY-MM-DD 格式或默认占位符日期
-    if (
-      /^YYYY-MM-DD$/i.test(trimmed) ||
-      (trimmed.match(/^\d{4}-\d{2}-\d{2}$/) && trimmed.startsWith('2000-01-01'))
-    ) {
-      return true;
-    }
-
-    // 检查版本占位符：vX.Y.Z, vX.X.X, vX.Y.Z 等格式（包含 X, Y, Z 字母的版本号）
-    if (/^v[XxYyZz]\.([XxYyZz]|\d+)\.([XxYyZz]|\d+)$/i.test(trimmed)) {
-      return true;
-    }
-
-    // 检查编号占位符：SA-XXXX, CVE-XXXX 等格式
-    if (/^(SA|CVE|CWE)-[Xx]{2,}$/i.test(trimmed)) {
-      return true;
-    }
-
-    // 检查示例域名
-    if (trimmed.includes('example.com') || trimmed.includes('example.org')) {
-      return true;
-    }
-
-    // 检查常见的占位符 commit hash（如 def5678, abc1234 等简单模式）
-    if (
-      /^[a-f0-9]{6,8}$/i.test(trimmed) &&
-      (trimmed.toLowerCase().startsWith('def') ||
-        trimmed.toLowerCase().startsWith('abc') ||
-        trimmed.toLowerCase() === 'commit_sha')
-    ) {
-      return true;
-    }
-
-    // 检查 Markdown 链接中的占位符文本
-    const linkMatch = trimmed.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
-    if (linkMatch) {
-      const linkText = linkMatch[1].trim();
-      const linkUrl = linkMatch[2].trim();
-
-      // 检查链接文本是否为占位符
-      const placeholderTexts = [
-        'username',
-        'XXX',
-        'commit_sha',
-        'commit',
-        'sha',
-        '研究者名称',
-        '开发者名称',
-        '研究机构/公司',
-        '研究者',
-        '机构',
-        '公司',
-        '开发者',
-        'vX.X.X',
-        'vX.Y.Z',
-        'SA-XXXX',
-        'def5678',
-        'abc1234',
-      ];
-
-      // 检查链接文本是否匹配占位符（支持 @username, #XXX 等格式）
-      const normalizedLinkText = linkText.toLowerCase();
-      if (
-        placeholderTexts.some(placeholder => {
-          const normalizedPlaceholder = placeholder.toLowerCase();
-          return (
-            normalizedLinkText === normalizedPlaceholder ||
-            normalizedLinkText === '@' + normalizedPlaceholder ||
-            normalizedLinkText === '#' + normalizedPlaceholder ||
-            normalizedLinkText.includes(normalizedPlaceholder)
-          );
-        })
-      ) {
-        return true;
-      }
-
-      // 检查链接 URL 是否包含占位符路径或示例域名
-      const normalizedUrl = linkUrl.toLowerCase();
-      if (
-        normalizedUrl.includes('/username') ||
-        normalizedUrl.includes('/xxx') ||
-        normalizedUrl.includes('/commit_sha') ||
-        normalizedUrl.includes('/commit/commit') ||
-        normalizedUrl.includes('/pull/xxx') ||
-        normalizedUrl.includes('/org/repo') ||
-        normalizedUrl.includes('example.com') ||
-        normalizedUrl.includes('example.org')
-      ) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
   // 元数据完成度（作为固定20%权重参与计算）
   const metadataWeight = 0.2;
   let metadataCompletionPercent = 0;
   let hasMetadata = false;
   let metadataComplete = false;
   let completeMetadataItems = 0;
+  let totalMetadataItems = 0;
+  let missingMetadataLabels: string[] = [];
 
-  if (!isBasicInfoStage && stage.metadata && stage.metadata.items.length > 0) {
-    const totalItems = stage.metadata.items.length;
-    completeMetadataItems = stage.metadata.items.filter(item => {
-      return !isPlaceholderValue(item.value);
-    }).length;
-
-    // 只有当存在有效（非占位符）元数据项时，才认为有元数据
-    hasMetadata = completeMetadataItems > 0;
-
-    // 元数据完成度转换为0-100
-    metadataCompletionPercent = Math.round((completeMetadataItems / Math.max(totalItems, 1)) * 100);
-    metadataComplete = completeMetadataItems === totalItems && totalItems > 0;
+  if (!isBasicInfoStage && stage.metadata) {
+    totalMetadataItems = stage.metadata.items.length;
+    const missingItems = stage.metadata.items.filter(item => isPlaceholderValue(item.value));
+    missingMetadataLabels = missingItems.map(item => item.label);
+    completeMetadataItems = totalMetadataItems - missingItems.length;
+    hasMetadata = totalMetadataItems > 0;
+    metadataCompletionPercent = Math.round(
+      (completeMetadataItems / Math.max(totalMetadataItems, 1)) * 100
+    );
+    metadataComplete = completeMetadataItems === totalMetadataItems && totalMetadataItems > 0;
   }
 
   // 最终完成度：子章节完成度占80%，元数据完成度占20%
@@ -1612,6 +1608,9 @@ function calculateStageCompletion(stage: LifecycleStage): StageCompletion {
       totalSubsections,
       completedSubsections,
       metadataCompletionPercent,
+      totalMetadataItems,
+      completedMetadataItems: completeMetadataItems,
+      missingMetadataLabels,
     },
   };
 }
@@ -1672,6 +1671,9 @@ export function renderCompletionView(markdown: string, container: HTMLElement): 
           totalSubsections: 0,
           completedSubsections: 0,
           metadataCompletionPercent: 0,
+          totalMetadataItems: 0,
+          completedMetadataItems: 0,
+          missingMetadataLabels: [],
         },
       });
     }
@@ -1756,14 +1758,33 @@ export function renderCompletionView(markdown: string, container: HTMLElement): 
     if (completion.stageNum !== 1) {
       html += '<div class="completion-stage-detail-item">';
       html += `<span class="completion-detail-label">元数据：</span>`;
-      if (completion.hasMetadata) {
-        html += `<span class="completion-detail-value ${completion.metadataComplete ? 'complete' : 'partial'}">`;
-        html += completion.metadataComplete ? '✓ 完整' : '⚠ 部分填写';
-        html += ' (20%)</span>';
-      } else {
+      const {
+        totalMetadataItems,
+        completedMetadataItems,
+        metadataCompletionPercent,
+        missingMetadataLabels,
+      } = completion.details;
+      if (totalMetadataItems === 0) {
         html += '<span class="completion-detail-value incomplete">✗ 未填写</span>';
+      } else if (completedMetadataItems === totalMetadataItems) {
+        html += '<span class="completion-detail-value complete">';
+        html += `✓ 完整 (20%) ${completedMetadataItems}/${totalMetadataItems} (${metadataCompletionPercent}%)`;
+        html += '</span>';
+      } else if (completedMetadataItems === 0) {
+        html += '<span class="completion-detail-value incomplete">';
+        html += `✗ 未填写 (20%) ${completedMetadataItems}/${totalMetadataItems} (${metadataCompletionPercent}%)`;
+        html += '</span>';
+      } else {
+        html += '<span class="completion-detail-value partial">';
+        html += `⚠ 部分填写 (20%) ${completedMetadataItems}/${totalMetadataItems} (${metadataCompletionPercent}%)`;
+        html += '</span>';
       }
       html += '</div>';
+
+      if (totalMetadataItems > 0 && missingMetadataLabels.length > 0) {
+        const missingText = missingMetadataLabels.map(label => escapeHtml(label)).join('、');
+        html += `<div class="completion-metadata-missing">缺失：${missingText}</div>`;
+      }
     }
 
     // TODO 详情

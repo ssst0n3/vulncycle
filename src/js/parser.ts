@@ -235,23 +235,13 @@ export function extractStageMetadata(content: string): StageMetadata {
 
     // 匹配列表项格式：- **字段名**：值
     // 支持中文冒号和英文冒号
-    const match = line.match(/^-\s*\*\*([^*]+)\*\*[：:]\s*(.+)$/);
+    const match = line.match(/^-\s*\*\*([^*]+)\*\*[：:]\s*(.*)$/);
     if (!match) {
       continue;
     }
 
     const label = match[1].trim();
     let value = match[2].trim();
-
-    // 跳过空值或占位符
-    if (!value || value === '...' || value === 'N/A' || value === 'TBD') {
-      continue;
-    }
-
-    // 处理可能的括号内容(如"需要修改")
-    if (value.includes('需要修改') || value.includes('待填写')) {
-      continue; // 跳过未填写的字段
-    }
 
     // 检查是否为 Markdown 链接格式 [text](url)
     const isMarkdownLink = /^\[.+\]\(.+\)$/.test(value);

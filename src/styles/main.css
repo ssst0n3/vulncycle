@@ -3662,6 +3662,12 @@ pre {
   color: #f5576c;
 }
 
+.completion-metadata-missing {
+  margin-left: calc(60px + var(--spacing-xs));
+  color: var(--text-secondary);
+  font-size: 0.85em;
+}
+
 .completion-todos {
   background: var(--todo-card-bg);
   border: 1px solid var(--todo-card-border);
