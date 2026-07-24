@@ -9,6 +9,7 @@ import {
   type StageHeading,
 } from './parser.js';
 import { logger } from './logger.js';
+import { stripStageNumberPrefix } from './config.js';
 
 // HTML 转义函数
 export function escapeHtml(text: string): string {
@@ -889,7 +890,7 @@ export function updateLifecycleView(markdown: string, container: HTMLElement): b
 
       const headerTitle = stageElement.querySelector('.stage-header-title');
       if (headerTitle) {
-        headerTitle.textContent = stage.title;
+        headerTitle.textContent = stripStageNumberPrefix(stage.title);
       }
 
       const anchorBtn = stageElement.querySelector<HTMLButtonElement>('.stage-anchor-btn');
@@ -1085,7 +1086,7 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
         html += '<div class="stage-header">';
         html += '<div class="stage-header-left">';
         html += `<div class="stage-number-badge" data-stage="${stageNum}">${stageNum}</div>`;
-        html += `<span class="stage-header-title">${escapeHtml(stage.title)}</span>`;
+        html += `<span class="stage-header-title">${escapeHtml(stripStageNumberPrefix(stage.title))}</span>`;
         html += `<button class="stage-anchor-btn" type="button"${lineAttr} title="跳转到编辑器对应位置">#</button>`;
         html += '</div>';
 
@@ -1353,7 +1354,7 @@ export function renderAnalysisView(markdown: string, container: HTMLElement): vo
       html += `<div class="analysis-section" id="${sectionId}" data-stage="${stage.stageNum}">`;
       html += `<div class="analysis-section-header" style="background: ${stageGradient}; border-bottom-color: ${stageBorderColor};">`;
       html += `<div class="analysis-section-number" data-stage="${stage.stageNum}">${stage.stageNum}</div>`;
-      html += `<h3 class="analysis-section-title">${escapeHtml(stage.title)}</h3>`;
+      html += `<h3 class="analysis-section-title">${escapeHtml(stripStageNumberPrefix(stage.title))}</h3>`;
       html += '</div>';
 
       if (stage.content) {
@@ -1712,7 +1713,7 @@ export function renderCompletionView(markdown: string, container: HTMLElement): 
     html += `<div class="completion-stage" data-stage="${completion.stageNum}">`;
     html += '<div class="completion-stage-header">';
     html += `<div class="completion-stage-number" data-stage="${completion.stageNum}">${completion.stageNum}</div>`;
-    html += `<h3 class="completion-stage-title">${escapeHtml(completion.title)}</h3>`;
+    html += `<h3 class="completion-stage-title">${escapeHtml(stripStageNumberPrefix(completion.title))}</h3>`;
     html += `<div class="completion-stage-percentage ${completionClass}">${completion.completion}%</div>`;
     html += '</div>';
 
