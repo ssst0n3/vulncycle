@@ -13,15 +13,15 @@ changelog:
 | --------------------------- | ------------------------------------------------------ | ---- |
 | Project                     | TODO: [link]()                                         |
 | ID                          | TODO: CVE-0000-0000                                    |
-| Confirm Link                | TODO: [link]()                                         |
 | Vuln's Author               | TODO: author@org                                       |
 | CVSS                        | TODO: 0.0 CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:L |
 | Exploits                    | TODO: [exp1]()<br>[exp2]()                             |
 | Affect Version              | TODO: 0.0.0-9.9.9                                      |
 | Fix Version                 | TODO: 0.0.0, 1.1.1                                     |
+| Confirm Link                | TODO: [link]()                                         |
 | Original Report             | TODO:                                                  |
-| Fix Commit                  | TODO: [commit]()                                       |
 | Introduce Commit            | TODO: [commit]()                                       |
+| Fix Commit                  | TODO: [commit]()                                       |
 | Introduce Date              | TODO: 1970-01-01                                       |
 | Report Date                 | TODO: 1970-01-01                                       |
 | Intelligence Gathering Date | TODO: 1970-01-01                                       |
