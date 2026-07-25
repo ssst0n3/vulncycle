@@ -102,9 +102,9 @@ TODO: 描述厂商的响应情况
 - **合入时间**: YYYY-MM-DD
 - **修复版本**: vX.X.X
 - **修复者**: [@username](https://github.com/username)
+- **合入者**: [@username](https://github.com/username)
 - **commit**: [commit_sha](https://github.com/org/repo/commit/commit_sha)
 - **提交时间**: YYYY-MM-DD
-- **合入者**: [@username](https://github.com/username)
 
 ### 1. 修复 commit 筛选
 
