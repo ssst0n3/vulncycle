@@ -419,8 +419,7 @@ header h1 {
 .article-sidebar-open {
   position: absolute;
   left: 0;
-  top: 50%;
-  transform: translateY(-50%);
+  top: 72px;
   z-index: 40;
   width: 30px;
   padding: 10px 0;
