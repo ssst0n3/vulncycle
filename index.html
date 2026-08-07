@@ -14,7 +14,7 @@
 
       <div class="editor-container" id="editor-container">
         <!-- 文章侧边栏 -->
-        <aside id="article-sidebar" class="article-sidebar" aria-label="文章列表">
+        <aside id="article-sidebar" class="article-sidebar" aria-label="报告列表">
           <div class="article-sidebar-header">
             <span class="article-sidebar-title">
               <svg
@@ -29,7 +29,7 @@
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                 <polyline points="14 2 14 8 20 8"></polyline>
               </svg>
-              文章
+              报告列表
             </span>
             <div class="article-sidebar-actions">
               <button
@@ -59,11 +59,10 @@
         <button
           id="article-sidebar-open"
           class="article-sidebar-open"
-          title="文章列表"
-          aria-label="文章列表"
+          title="打开报告列表"
+          aria-label="打开报告列表"
         >
           <svg
-            class="icon-open"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -71,19 +70,14 @@
             stroke-linecap="round"
             stroke-linejoin="round"
           >
-            <polyline points="9 18 15 12 9 6"></polyline>
+            <line x1="8" y1="6" x2="21" y2="6"></line>
+            <line x1="8" y1="12" x2="21" y2="12"></line>
+            <line x1="8" y1="18" x2="21" y2="18"></line>
+            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+            <line x1="3" y1="18" x2="3.01" y2="18"></line>
           </svg>
-          <svg
-            class="icon-close"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <polyline points="15 18 9 12 15 6"></polyline>
-          </svg>
+          <span class="article-sidebar-open-label">报告</span>
         </button>
 
         <!-- 左侧编辑器 -->
@@ -324,6 +318,15 @@
                 </div>
               </div>
             </div>
+          </div>
+          <div class="github-binding-row">
+            <span id="github-binding-status" class="github-binding-status"></span>
+            <button id="github-bind-btn" class="github-ghost-btn" type="button">
+              绑定当前配置到本报告
+            </button>
+            <button id="github-unbind-btn" class="github-ghost-btn" type="button" disabled>
+              解除绑定
+            </button>
           </div>
         </div>
         <div class="history-modal-footer github-modal-footer">

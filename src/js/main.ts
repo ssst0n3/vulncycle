@@ -12,7 +12,8 @@ import {
   updateLifecycleView,
 } from './renderer.js';
 import { storageManager, type HistoryEntry, type SaveStatus } from './storage.js';
-import { documentStore } from './documentStore.js';
+import { documentStore, type GithubBinding } from './documentStore.js';
+import { formatSaveLocation, type SaveMode } from './saveLocation.js';
 import {
   readFromGist,
   readFromRepo,
@@ -227,6 +228,9 @@ function renderCurrentView(markdown: string, container: HTMLElement): void {
   if (currentView === 'lifecycle') {
     applyTimelineVisibility();
   }
+
+  // 在预览内容顶部注入保存位置块（内容流内，跟随滚动）
+  updatePreviewLocation();
 }
 
 // 初始化应用
@@ -299,6 +303,9 @@ function initApp(): void {
 
   // 初始化 GitHub 云端存储
   initGithubIntegration(editor, previewContent);
+
+  // 初始化预览区保存位置显示
+  updatePreviewLocation();
 
   // 初始化历史版本功能
   initHistoryModal(editor, previewContent);
@@ -431,6 +438,12 @@ let sidebarPreview: HTMLElement | null = null;
 // 上次 touch 的文章内容（避免自动保存每 2 秒无条件刷新文章元数据）
 let lastTouchedContent: string | null = null;
 
+// 当前生效的 GitHub 配置（报告绑定优先于全局默认）
+let activeGithubConfig: GithubConfig = loadGithubConfig();
+
+// 切换报告时由 initGithubIntegration 注册的配置同步钩子
+let syncGithubConfigForArticle: ((id: string | null) => void) | null = null;
+
 // 文章列表操作图标
 const RENAME_ICON =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>';
@@ -522,7 +535,7 @@ function renderArticleList(): void {
   if (!metas.length) {
     const empty = document.createElement('div');
     empty.className = 'article-empty';
-    empty.textContent = '暂无文章';
+    empty.textContent = '暂无报告';
     list.appendChild(empty);
     return;
   }
@@ -597,6 +610,7 @@ function switchArticle(id: string): void {
   setEditorContent(sidebarEditor, sidebarPreview, content);
   renderArticleList();
   closeArticleSidebar();
+  syncGithubConfigForArticle?.(id);
 }
 
 // 新建文章
@@ -616,7 +630,8 @@ async function handleNewArticle(): Promise<void> {
   setEditorContent(sidebarEditor, sidebarPreview, content);
   renderArticleList();
   closeArticleSidebar();
-  showSaveNotification('已新建文章');
+  syncGithubConfigForArticle?.(documentStore.getActiveArticleId());
+  showSaveNotification('已新建报告');
 }
 
 // 重命名文章
@@ -634,7 +649,7 @@ function handleDeleteArticle(id: string): void {
   if (!sidebarEditor || !sidebarPreview) return;
   const meta = documentStore.getArticleById(id);
   if (!meta) return;
-  const confirmed = window.confirm(`确定删除文章「${meta.title}」？删除后无法恢复。`);
+  const confirmed = window.confirm(`确定删除报告「${meta.title}」？删除后无法恢复。`);
   if (!confirmed) return;
 
   const wasActive = id === documentStore.getActiveArticleId();
@@ -646,9 +661,11 @@ function handleDeleteArticle(id: string): void {
       storageManager.setActiveArticleId(nextId);
       const content = storageManager.loadFromLocalStorage() ?? '';
       setEditorContent(sidebarEditor, sidebarPreview, content);
+      syncGithubConfigForArticle?.(nextId);
     } else {
       documentStore.createArticle('');
       setEditorContent(sidebarEditor, sidebarPreview, '');
+      syncGithubConfigForArticle?.(documentStore.getActiveArticleId());
     }
   }
   renderArticleList();
@@ -780,9 +797,8 @@ function initSaveFeature(editor: EditorView): void {
   const saveBtn = document.getElementById('save-btn');
   const downloadBtn = document.getElementById('download-btn');
 
-  // 根据当前设置初始化保存按钮文字
-  const config = loadGithubConfig();
-  updateSaveBtnLabel(config.mode);
+  // 根据当前生效配置初始化保存按钮文字
+  updateSaveBtnLabel(activeGithubConfig.mode);
 
   // 启动自动保存
   storageManager.startAutoSave(
@@ -804,9 +820,8 @@ function initSaveFeature(editor: EditorView): void {
   if (saveBtn) {
     saveBtn.addEventListener('click', () => {
       const content = editor.state.doc.toString();
-      const config = loadGithubConfig();
 
-      if (config.mode === 'local') {
+      if (activeGithubConfig.mode === 'local') {
         // Local 模式：保存到浏览器
         persistArticle(content);
         const now = new Date();
@@ -863,9 +878,75 @@ function updateSaveBtnLabel(mode: 'local' | 'gist' | 'repo'): void {
     repo: { text: '保存到仓库', title: '保存到 GitHub 仓库' },
   };
 
-  const config = labels[mode] || labels.local;
-  saveBtnLabel.textContent = config.text;
-  saveBtn.title = config.title;
+  const label = labels[mode] || labels.local;
+  const location = formatSaveLocation({
+    mode,
+    gistId: activeGithubConfig.gistId,
+    filename: activeGithubConfig.gistFilename,
+    owner: activeGithubConfig.repoOwner,
+    repo: activeGithubConfig.repoName,
+    branch: activeGithubConfig.repoBranch,
+    path: activeGithubConfig.repoPath,
+  });
+  saveBtnLabel.textContent = label.text;
+  saveBtn.title = `${label.title}（${location}）`;
+}
+
+// 模式标签文案
+const MODE_LABELS: Record<SaveMode, string> = {
+  local: 'Local',
+  gist: 'Gist',
+  repo: 'Repo',
+};
+
+// 位置块展开状态（渲染重建后保持用户选择）
+let previewLocationOpen = false;
+
+// 更新预览区保存位置显示（注入预览内容流顶部，默认模式徽章，点击展开）
+function updatePreviewLocation(): void {
+  const container = document.getElementById('preview-content');
+  if (!container) return;
+
+  // 移除旧的位置块（幂等，避免重复注入）
+  container.querySelector('.preview-location')?.remove();
+
+  const mode = activeGithubConfig.mode;
+  const location = formatSaveLocation({
+    mode,
+    gistId: activeGithubConfig.gistId,
+    filename: activeGithubConfig.gistFilename,
+    owner: activeGithubConfig.repoOwner,
+    repo: activeGithubConfig.repoName,
+    branch: activeGithubConfig.repoBranch,
+    path: activeGithubConfig.repoPath,
+  });
+  const activeId = documentStore.getActiveArticleId();
+  const binding = activeId ? documentStore.getArticleGithub(activeId) : null;
+
+  const el = document.createElement('div');
+  el.className = 'preview-location';
+  el.title = previewLocationOpen ? '点击收起保存位置' : '点击查看保存位置';
+
+  const modeSpan = document.createElement('span');
+  modeSpan.className = `preview-location-mode ${mode}`;
+  modeSpan.textContent = MODE_LABELS[mode];
+
+  const textSpan = document.createElement('span');
+  textSpan.className = 'preview-location-text';
+  textSpan.textContent = binding ? `${location}（本报告绑定）` : location;
+
+  el.appendChild(modeSpan);
+  el.appendChild(textSpan);
+
+  el.classList.toggle('open', previewLocationOpen);
+
+  el.addEventListener('click', () => {
+    previewLocationOpen = !previewLocationOpen;
+    el.classList.toggle('open', previewLocationOpen);
+    el.title = previewLocationOpen ? '点击收起保存位置' : '点击查看保存位置';
+  });
+
+  container.prepend(el);
 }
 
 function initGithubIntegration(editor: EditorView, previewContent: HTMLElement): void {
@@ -928,11 +1009,53 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
   }
 
   let config: GithubConfig = loadGithubConfig();
+  activeGithubConfig = config;
   let busy = false;
+
+  const bindingStatusEl = document.getElementById('github-binding-status');
+  const bindBtn = document.getElementById('github-bind-btn') as HTMLButtonElement | null;
+  const unbindBtn = document.getElementById('github-unbind-btn') as HTMLButtonElement | null;
+
+  // 云端目标字段 -> 绑定快照
+  const toBinding = (c: GithubConfig): GithubBinding => ({
+    mode: c.mode === 'local' ? 'gist' : c.mode,
+    gistId: c.gistId,
+    filename: c.gistFilename,
+    owner: c.repoOwner,
+    repo: c.repoName,
+    branch: c.repoBranch,
+    path: c.repoPath,
+  });
+
+  const updateBindingStatus = () => {
+    if (!bindingStatusEl || !bindBtn || !unbindBtn) return;
+    const activeId = documentStore.getActiveArticleId();
+    const binding = activeId ? documentStore.getArticleGithub(activeId) : null;
+    if (binding) {
+      const location = formatSaveLocation({
+        mode: binding.mode,
+        gistId: binding.gistId,
+        filename: binding.filename,
+        owner: binding.owner,
+        repo: binding.repo,
+        branch: binding.branch,
+        path: binding.path,
+      });
+      bindingStatusEl.textContent = `本报告已绑定，保存位置：${location}`;
+      bindBtn.textContent = '更新绑定';
+      unbindBtn.disabled = false;
+    } else {
+      bindingStatusEl.textContent = '本报告未绑定，使用全局保存位置';
+      bindBtn.textContent = '绑定当前配置到本报告';
+      bindBtn.disabled = config.mode === 'local';
+      unbindBtn.disabled = true;
+    }
+  };
 
   const openModal = () => {
     modal.classList.remove('hidden');
     modal.setAttribute('aria-hidden', 'false');
+    updateBindingStatus();
   };
 
   const closeModal = () => {
@@ -964,8 +1087,16 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
     loadBtn.disabled = disabled;
   };
 
+  // 云端目标存全局；若当前报告已绑定则同步更新绑定（token 等敏感字段始终只存全局）
   const persist = () => {
     saveGithubConfig(config);
+    const activeId = documentStore.getActiveArticleId();
+    if (activeId && config.mode !== 'local') {
+      const binding = documentStore.getArticleGithub(activeId);
+      if (binding) {
+        documentStore.setArticleGithub(activeId, toBinding(config));
+      }
+    }
   };
 
   const syncModeUI = () => {
@@ -979,16 +1110,21 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
     saveBtn.disabled = !remoteEnabled;
     loadBtn.disabled = !remoteEnabled;
 
-    const modeLabel =
-      config.mode === 'local'
-        ? '当前模式：Local（仅浏览器）'
-        : config.mode === 'gist'
-          ? '当前模式：Gist'
-          : '当前模式：Repo';
-    setStatus(modeLabel, 'info');
+    const location = formatSaveLocation({
+      mode: config.mode,
+      gistId: config.gistId,
+      filename: config.gistFilename,
+      owner: config.repoOwner,
+      repo: config.repoName,
+      branch: config.repoBranch,
+      path: config.repoPath,
+    });
+    setStatus(`保存位置：${location}`, 'info');
 
     // 更新顶部保存按钮文字
     updateSaveBtnLabel(config.mode);
+    updateBindingStatus();
+    updatePreviewLocation();
   };
 
   const applyConfigToInputs = () => {
@@ -1016,6 +1152,44 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
     config = { ...config, ...partial };
     persist();
     syncModeUI();
+  };
+
+  bindBtn?.addEventListener('click', () => {
+    const activeId = documentStore.getActiveArticleId();
+    if (!activeId || config.mode === 'local') return;
+    documentStore.setArticleGithub(activeId, toBinding(config));
+    updateBindingStatus();
+    setStatus('已绑定当前配置到本报告', 'success');
+    showSaveNotification('已绑定云端目标到本报告');
+  });
+
+  unbindBtn?.addEventListener('click', () => {
+    const activeId = documentStore.getActiveArticleId();
+    if (!activeId) return;
+    documentStore.setArticleGithub(activeId, null);
+    updateBindingStatus();
+    setStatus('已解除绑定，恢复使用全局配置', 'info');
+    showSaveNotification('已解除云端绑定');
+  });
+
+  // 切换报告时同步生效配置（报告绑定优先于全局默认）
+  syncGithubConfigForArticle = (id: string | null) => {
+    const globalConfig = loadGithubConfig();
+    const binding = id ? documentStore.getArticleGithub(id) : null;
+    config = binding
+      ? {
+          ...globalConfig,
+          mode: binding.mode,
+          gistId: binding.gistId ?? globalConfig.gistId,
+          gistFilename: binding.filename ?? globalConfig.gistFilename,
+          repoOwner: binding.owner ?? globalConfig.repoOwner,
+          repoName: binding.repo ?? globalConfig.repoName,
+          repoBranch: binding.branch ?? globalConfig.repoBranch,
+          repoPath: binding.path ?? globalConfig.repoPath,
+        }
+      : globalConfig;
+    activeGithubConfig = config;
+    applyConfigToInputs();
   };
 
   const setAdvancedExpanded = (expanded: boolean) => {
@@ -1122,7 +1296,13 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
         persistArticle(content);
         setStatus('已保存到 Gist', 'success');
         const gistId = result.data?.gistId || config.gistId;
-        showSaveNotification(`已保存到 Gist: ${gistId}`, 'success');
+        const location = formatSaveLocation({
+          mode: 'gist',
+          gistId,
+          filename: config.gistFilename,
+        });
+        updatePreviewLocation();
+        showSaveNotification(`已保存：${location}`, 'success');
       } else {
         setStatus(result.error || '保存到 Gist 失败', 'error');
         showSaveNotification(result.error || '保存到 Gist 失败', 'error');
@@ -1147,8 +1327,15 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
         persistArticle(content);
         setStatus('已保存到 Repo', 'success');
         const shaShort = result.data?.sha ? result.data.sha.substring(0, 7) : 'unknown';
-        const repoPath = `${config.repoOwner}/${config.repoName}/${path}`;
-        showSaveNotification(`已保存到 ${repoPath}（提交: ${shaShort}）`, 'success');
+        const location = formatSaveLocation({
+          mode: 'repo',
+          owner: config.repoOwner,
+          repo: config.repoName,
+          branch: config.repoBranch,
+          path,
+        });
+        updatePreviewLocation();
+        showSaveNotification(`已保存：${location}（提交 ${shaShort}）`, 'success');
       } else {
         setStatus(result.error || '保存到 Repo 失败', 'error');
         showSaveNotification(result.error || '保存到 Repo 失败', 'error');
@@ -1186,7 +1373,14 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
         setEditorContent(editor, previewContent, result.data);
         persistArticle(result.data);
         setStatus('已从 Gist 拉取并同步到本地', 'success');
-        showSaveNotification('已从 GitHub 拉取');
+        updatePreviewLocation();
+        showSaveNotification(
+          `已拉取：${formatSaveLocation({
+            mode: 'gist',
+            gistId: config.gistId,
+            filename: config.gistFilename,
+          })}`
+        );
       } else {
         setStatus(result.error || '从 Gist 拉取失败', 'error');
       }
@@ -1210,7 +1404,16 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
         setEditorContent(editor, previewContent, result.data);
         persistArticle(result.data);
         setStatus('已从 Repo 拉取并同步到本地', 'success');
-        showSaveNotification('已从 GitHub 拉取');
+        updatePreviewLocation();
+        showSaveNotification(
+          `已拉取：${formatSaveLocation({
+            mode: 'repo',
+            owner: config.repoOwner,
+            repo: config.repoName,
+            branch: config.repoBranch,
+            path,
+          })}`
+        );
       } else {
         setStatus(result.error || '从 Repo 拉取失败', 'error');
       }

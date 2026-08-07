@@ -24,6 +24,19 @@ export interface ArticleMeta {
   updatedAt: string;
   /** 手动重命名后锁定标题，不再随正文自动更新 */
   titleLocked?: boolean;
+  /** 该报告绑定的 GitHub 云端目标（优先于全局配置） */
+  github?: GithubBinding;
+}
+
+/** 报告的 GitHub 云端绑定（全局配置的云端字段快照） */
+export interface GithubBinding {
+  mode: 'gist' | 'repo';
+  gistId?: string;
+  filename?: string;
+  owner?: string;
+  repo?: string;
+  branch?: string;
+  path?: string;
 }
 
 export class DocumentStore {
@@ -115,6 +128,28 @@ export class DocumentStore {
     if (!meta) return;
     meta.title = trimmed;
     meta.titleLocked = true;
+    this.writeIndex(list);
+  }
+
+  /**
+   * 获取指定报告的云端绑定（无则返回 null）
+   */
+  getArticleGithub(id: string): GithubBinding | null {
+    return this.getArticleById(id)?.github ?? null;
+  }
+
+  /**
+   * 设置/更新指定报告的云端绑定（传 null 解除绑定）
+   */
+  setArticleGithub(id: string, github: GithubBinding | null): void {
+    const list = this.readIndex();
+    const meta = list.find(item => item.id === id);
+    if (!meta) return;
+    if (github) {
+      meta.github = github;
+    } else {
+      delete meta.github;
+    }
     this.writeIndex(list);
   }
 
