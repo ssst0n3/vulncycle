@@ -135,6 +135,7 @@
 - Markdown parsing/rendering: `src/js/parser.ts`, `src/js/renderer.ts`
 - GitHub storage: `src/js/githubClient.ts`, `src/js/githubConfig.ts`
 - Local storage: `src/js/storage.ts`
+- Multi-article management: `src/js/documentStore.ts`
 - Logger: `src/js/logger.ts`
 - Styles: `src/styles/main.css`
 - Types: `src/types/*.d.ts`

@@ -13,6 +13,79 @@
       </header>
 
       <div class="editor-container" id="editor-container">
+        <!-- 文章侧边栏 -->
+        <aside id="article-sidebar" class="article-sidebar" aria-label="文章列表">
+          <div class="article-sidebar-header">
+            <span class="article-sidebar-title">
+              <svg
+                class="article-sidebar-title-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+              </svg>
+              文章
+            </span>
+            <div class="article-sidebar-actions">
+              <button
+                id="article-new-btn"
+                class="article-sidebar-btn"
+                title="新建文章"
+                aria-label="新建文章"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                >
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div id="article-list" class="article-list"></div>
+        </aside>
+
+        <!-- 文章列表遮罩与浮动开关按钮 -->
+        <div id="article-sidebar-backdrop" class="article-sidebar-backdrop"></div>
+        <button
+          id="article-sidebar-open"
+          class="article-sidebar-open"
+          title="文章列表"
+          aria-label="文章列表"
+        >
+          <svg
+            class="icon-open"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+          <svg
+            class="icon-close"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+
         <!-- 左侧编辑器 -->
         <div class="editor-panel" id="editor-panel">
           <div class="panel-header">

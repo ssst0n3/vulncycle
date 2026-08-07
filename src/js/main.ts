@@ -12,6 +12,7 @@ import {
   updateLifecycleView,
 } from './renderer.js';
 import { storageManager, type HistoryEntry, type SaveStatus } from './storage.js';
+import { documentStore } from './documentStore.js';
 import {
   readFromGist,
   readFromRepo,
@@ -244,6 +245,13 @@ function initApp(): void {
     return;
   }
 
+  // 多文章初始化：迁移旧数据，确保存在当前文章
+  documentStore.migrateLegacyData();
+  if (!documentStore.getActiveArticleId()) {
+    documentStore.createArticle('');
+  }
+  storageManager.setActiveArticleId(documentStore.getActiveArticleId() ?? '');
+
   // 防抖函数
   let updateTimer: ReturnType<typeof setTimeout> | null = null;
   const debouncedUpdate = (markdown: string) => {
@@ -258,7 +266,7 @@ function initApp(): void {
   // 保存功能回调
   const saveContent = (view: EditorView) => {
     const content = view.state.doc.toString();
-    storageManager.manualSave(content);
+    persistArticle(content);
     showSaveNotification('已保存');
   };
 
@@ -277,6 +285,9 @@ function initApp(): void {
   // 初始化折叠/展开功能（事件委托）
   initStageToggle(previewContent, editor);
 
+  // 初始化文章侧边栏
+  initArticleSidebar(editor, previewContent);
+
   // 初始化视图切换功能
   initViewSwitcher(editor, previewContent);
 
@@ -292,8 +303,8 @@ function initApp(): void {
   // 初始化历史版本功能
   initHistoryModal(editor, previewContent);
 
-  // 加载模板内容（或已保存的内容）
-  loadTemplate(editor, previewContent);
+  // 加载当前活动文章（或模板）
+  loadActiveArticle(editor, previewContent);
 
   // 初始化全屏功能
   initFullscreen();
@@ -343,43 +354,23 @@ function initViewSwitcher(editor: EditorView, previewContent: HTMLElement): void
   completionBtn.addEventListener('click', () => switchView('completion'));
 }
 
-// 加载模板
-async function loadTemplate(editor: EditorView, previewContent: HTMLElement): Promise<void> {
-  // 优先加载已保存的内容
-  const savedContent = storageManager.loadFromLocalStorage();
-  if (savedContent !== null) {
-    // 如果有已保存的内容（包括空字符串），使用已保存的内容
-    editor.dispatch({
-      changes: { from: 0, to: editor.state.doc.length, insert: savedContent },
-    });
-    renderCurrentView(savedContent, previewContent);
-    updateSaveStatus(savedContent);
-    storageManager.seedHistory(savedContent);
+// 加载当前活动文章（无保存内容时回退到模板）
+async function loadActiveArticle(editor: EditorView, previewContent: HTMLElement): Promise<void> {
+  // 活动文章已有内容则直接加载
+  if (storageManager.hasSavedContent()) {
+    const savedContent = storageManager.loadFromLocalStorage() ?? '';
+    setEditorContent(editor, previewContent, savedContent);
     return;
   }
 
-  // 如果没有已保存的内容，加载模板
+  // 活动文章无内容时，用模板填充
   try {
-    const templateUrl = new URL(
-      'TEMPLATE.md',
-      `${window.location.origin}${import.meta.env.BASE_URL}`
-    ).toString();
-    const response = await fetch(templateUrl);
-    if (!response.ok) {
-      throw new Error('Failed to load template');
-    }
-    const text = await response.text();
-    editor.dispatch({
-      changes: { from: 0, to: editor.state.doc.length, insert: text },
-    });
-    renderCurrentView(text, previewContent);
-    // 保存模板内容
-    storageManager.saveToLocalStorage(text);
-    updateSaveStatus(text);
-    storageManager.seedHistory(text);
+    const text = await fetchTemplateText();
+    setEditorContent(editor, previewContent, text);
+    persistArticle(text);
   } catch (err) {
-    renderCurrentView('', previewContent);
-    updateSaveStatus('');
+    logger.error('Failed to load template:', err);
+    setEditorContent(editor, previewContent, '');
   }
 }
 
@@ -422,13 +413,246 @@ async function handleTemplateReload(
       changes: { from: 0, to: editor.state.doc.length, insert: text },
     });
     renderCurrentView(text, previewContent);
-    storageManager.manualSave(text);
+    persistArticle(text);
     updateSaveStatus(text);
     storageManager.seedHistory(text);
     showSaveNotification('已加载模板');
   } catch (error) {
     showSaveNotification('模板加载失败', 'error');
   }
+}
+
+// ===== 多文章支持 =====
+
+// 当前编辑器与预览容器（供侧边栏交互使用）
+let sidebarEditor: EditorView | null = null;
+let sidebarPreview: HTMLElement | null = null;
+
+// 上次 touch 的文章内容（避免自动保存每 2 秒无条件刷新文章元数据）
+let lastTouchedContent: string | null = null;
+
+// 文章列表操作图标
+const RENAME_ICON =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>';
+const DELETE_ICON =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
+
+// 保存当前文章（正文 + 元数据）
+function persistArticle(content: string): void {
+  const activeId = documentStore.getActiveArticleId();
+  if (!activeId) return;
+  storageManager.manualSave(content);
+  documentStore.touchArticle(activeId, content);
+}
+
+// 将内容写入编辑器并同步渲染/保存状态/历史
+function setEditorContent(
+  editor: EditorView,
+  previewContent: HTMLElement,
+  content: string
+): void {
+  editor.dispatch({
+    changes: { from: 0, to: editor.state.doc.length, insert: content },
+  });
+  renderCurrentView(content, previewContent);
+  storageManager.markSaved(content);
+  updateSaveStatus(content);
+  storageManager.seedHistory(content);
+}
+
+// 获取模板文本
+async function fetchTemplateText(): Promise<string> {
+  const templateUrl = new URL(
+    'TEMPLATE.md',
+    `${window.location.origin}${import.meta.env.BASE_URL}`
+  ).toString();
+  const response = await fetch(templateUrl);
+  if (!response.ok) {
+    throw new Error('Failed to load template');
+  }
+  return response.text();
+}
+
+// 关闭文章列表面板
+function closeArticleSidebar(): void {
+  const sidebar = document.getElementById('article-sidebar');
+  sidebar?.classList.remove('open');
+}
+
+// 初始化文章侧边栏（浮动抽屉）
+function initArticleSidebar(editor: EditorView, previewContent: HTMLElement): void {
+  sidebarEditor = editor;
+  sidebarPreview = previewContent;
+
+  const newBtn = document.getElementById('article-new-btn') as HTMLButtonElement | null;
+  const openBtn = document.getElementById('article-sidebar-open') as HTMLButtonElement | null;
+  const backdrop = document.getElementById('article-sidebar-backdrop') as HTMLElement | null;
+  const sidebar = document.getElementById('article-sidebar') as HTMLElement | null;
+
+  renderArticleList();
+
+  if (newBtn) {
+    newBtn.addEventListener('click', () => {
+      void handleNewArticle();
+    });
+  }
+
+  if (openBtn && sidebar) {
+    openBtn.addEventListener('click', () => {
+      sidebar.classList.toggle('open');
+    });
+  }
+
+  if (backdrop && sidebar) {
+    backdrop.addEventListener('click', () => {
+      sidebar.classList.remove('open');
+    });
+  }
+}
+
+// 渲染文章列表
+function renderArticleList(): void {
+  const list = document.getElementById('article-list');
+  if (!list) return;
+
+  const activeId = documentStore.getActiveArticleId();
+  const metas = documentStore.listArticles();
+
+  list.innerHTML = '';
+  if (!metas.length) {
+    const empty = document.createElement('div');
+    empty.className = 'article-empty';
+    empty.textContent = '暂无文章';
+    list.appendChild(empty);
+    return;
+  }
+
+  metas.forEach(meta => {
+    const item = document.createElement('div');
+    item.className = `article-item${meta.id === activeId ? ' active' : ''}`;
+    item.title = meta.title;
+
+    const main = document.createElement('div');
+    main.className = 'article-item-main';
+
+    const title = document.createElement('span');
+    title.className = 'article-item-title';
+    title.textContent = meta.title;
+
+    const time = document.createElement('span');
+    time.className = 'article-item-time';
+    time.textContent = formatTime(new Date(meta.updatedAt));
+
+    main.appendChild(title);
+    main.appendChild(time);
+
+    const actions = document.createElement('span');
+    actions.className = 'article-item-actions';
+
+    const renameBtn = document.createElement('button');
+    renameBtn.type = 'button';
+    renameBtn.className = 'article-item-action-btn';
+    renameBtn.title = '重命名';
+    renameBtn.innerHTML = RENAME_ICON;
+    renameBtn.addEventListener('click', event => {
+      event.stopPropagation();
+      handleRenameArticle(meta.id);
+    });
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'article-item-action-btn delete';
+    deleteBtn.title = '删除';
+    deleteBtn.innerHTML = DELETE_ICON;
+    deleteBtn.addEventListener('click', event => {
+      event.stopPropagation();
+      handleDeleteArticle(meta.id);
+    });
+
+    actions.appendChild(renameBtn);
+    actions.appendChild(deleteBtn);
+    item.appendChild(main);
+    item.appendChild(actions);
+
+    item.addEventListener('click', () => {
+      switchArticle(meta.id);
+    });
+
+    list.appendChild(item);
+  });
+}
+
+// 切换文章（先保存当前文章，再加载目标文章）
+function switchArticle(id: string): void {
+  if (id === documentStore.getActiveArticleId()) return;
+  if (!sidebarEditor || !sidebarPreview) return;
+
+  // 先保存当前文章，避免内容丢失
+  persistArticle(sidebarEditor.state.doc.toString());
+
+  documentStore.setActiveArticleId(id);
+  storageManager.setActiveArticleId(id);
+
+  const content = storageManager.loadFromLocalStorage() ?? '';
+  setEditorContent(sidebarEditor, sidebarPreview, content);
+  renderArticleList();
+  closeArticleSidebar();
+}
+
+// 新建文章
+async function handleNewArticle(): Promise<void> {
+  if (!sidebarEditor || !sidebarPreview) return;
+
+  persistArticle(sidebarEditor.state.doc.toString());
+
+  let content = '';
+  try {
+    content = await fetchTemplateText();
+  } catch (err) {
+    logger.warn('模板加载失败，使用空文档:', err);
+  }
+
+  documentStore.createArticle(content);
+  setEditorContent(sidebarEditor, sidebarPreview, content);
+  renderArticleList();
+  closeArticleSidebar();
+  showSaveNotification('已新建文章');
+}
+
+// 重命名文章
+function handleRenameArticle(id: string): void {
+  const meta = documentStore.getArticleById(id);
+  if (!meta) return;
+  const newTitle = window.prompt('重命名文章', meta.title);
+  if (newTitle === null) return;
+  documentStore.renameArticle(id, newTitle);
+  renderArticleList();
+}
+
+// 删除文章（删除当前文章时自动切换到剩余文章或新建空文章）
+function handleDeleteArticle(id: string): void {
+  if (!sidebarEditor || !sidebarPreview) return;
+  const meta = documentStore.getArticleById(id);
+  if (!meta) return;
+  const confirmed = window.confirm(`确定删除文章「${meta.title}」？删除后无法恢复。`);
+  if (!confirmed) return;
+
+  const wasActive = id === documentStore.getActiveArticleId();
+  documentStore.deleteArticle(id);
+
+  if (wasActive) {
+    const nextId = documentStore.getActiveArticleId();
+    if (nextId) {
+      storageManager.setActiveArticleId(nextId);
+      const content = storageManager.loadFromLocalStorage() ?? '';
+      setEditorContent(sidebarEditor, sidebarPreview, content);
+    } else {
+      documentStore.createArticle('');
+      setEditorContent(sidebarEditor, sidebarPreview, '');
+    }
+  }
+  renderArticleList();
+  showSaveNotification(`已删除「${meta.title}」`);
 }
 
 // 初始化章节折叠/展开功能
@@ -562,7 +786,15 @@ function initSaveFeature(editor: EditorView): void {
 
   // 启动自动保存
   storageManager.startAutoSave(
-    () => editor.state.doc.toString(),
+    () => {
+      const content = editor.state.doc.toString();
+      const activeId = documentStore.getActiveArticleId();
+      if (activeId && content !== lastTouchedContent) {
+        lastTouchedContent = content;
+        documentStore.touchArticle(activeId, content);
+      }
+      return content;
+    },
     (status: SaveStatus) => {
       updateSaveStatusUI(status);
     }
@@ -576,7 +808,7 @@ function initSaveFeature(editor: EditorView): void {
 
       if (config.mode === 'local') {
         // Local 模式：保存到浏览器
-        storageManager.manualSave(content);
+        persistArticle(content);
         const now = new Date();
         const timeStr = now.toLocaleString('zh-CN', {
           year: 'numeric',
@@ -887,7 +1119,7 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
         if (result.data?.gistId && !config.gistId) {
           updateConfig({ gistId: result.data.gistId });
         }
-        storageManager.manualSave(content);
+        persistArticle(content);
         setStatus('已保存到 Gist', 'success');
         const gistId = result.data?.gistId || config.gistId;
         showSaveNotification(`已保存到 Gist: ${gistId}`, 'success');
@@ -912,7 +1144,7 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
         content,
       });
       if (result.ok) {
-        storageManager.manualSave(content);
+        persistArticle(content);
         setStatus('已保存到 Repo', 'success');
         const shaShort = result.data?.sha ? result.data.sha.substring(0, 7) : 'unknown';
         const repoPath = `${config.repoOwner}/${config.repoName}/${path}`;
@@ -951,10 +1183,8 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
         editor.dispatch({
           changes: { from: 0, to: editor.state.doc.length, insert: result.data },
         });
-        renderCurrentView(result.data, previewContent);
-        storageManager.manualSave(result.data);
-        updateSaveStatus(result.data);
-        storageManager.seedHistory(result.data);
+        setEditorContent(editor, previewContent, result.data);
+        persistArticle(result.data);
         setStatus('已从 Gist 拉取并同步到本地', 'success');
         showSaveNotification('已从 GitHub 拉取');
       } else {
@@ -977,10 +1207,8 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
         editor.dispatch({
           changes: { from: 0, to: editor.state.doc.length, insert: result.data },
         });
-        renderCurrentView(result.data, previewContent);
-        storageManager.manualSave(result.data);
-        updateSaveStatus(result.data);
-        storageManager.seedHistory(result.data);
+        setEditorContent(editor, previewContent, result.data);
+        persistArticle(result.data);
         setStatus('已从 Repo 拉取并同步到本地', 'success');
         showSaveNotification('已从 GitHub 拉取');
       } else {
@@ -1196,9 +1424,8 @@ function initHistoryModal(editor: EditorView, previewContent: HTMLElement): void
     editor.dispatch({
       changes: { from: 0, to: editor.state.doc.length, insert: selectedEntry.content },
     });
-    renderCurrentView(selectedEntry.content, previewContent);
-    storageManager.manualSave(selectedEntry.content);
-    updateSaveStatus(selectedEntry.content);
+    setEditorContent(editor, previewContent, selectedEntry.content);
+    persistArticle(selectedEntry.content);
     showSaveNotification('已恢复历史版本');
     closeModal();
   });

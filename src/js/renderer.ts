@@ -331,7 +331,7 @@ function applyStageSubsectionsWithState(
   }
 
   // 使用传入的状态，如果没有传入则尝试捕获当前状态
-  let expandedSubsectionTitles = new Set<string>();
+  const expandedSubsectionTitles = new Set<string>();
 
   if (subsectionStates) {
     // 使用传入的状态
@@ -993,7 +993,7 @@ export function renderLifecycleView(markdown: string, container: HTMLElement): v
   }
 
   const title = extractTitle(markdown);
-  let stages = parseLifecycleStages(markdown);
+  const stages = parseLifecycleStages(markdown);
   let timeNodes: TimeNode[] = [];
 
   let html = '<div class="lifecycle-container">';

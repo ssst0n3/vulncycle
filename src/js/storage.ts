@@ -5,10 +5,17 @@
 
 import { logger } from './logger.js';
 
-// 存储键名
-const STORAGE_KEY = 'vulncycleinsight_content';
-const STORAGE_TIMESTAMP_KEY = 'vulncycleinsight_timestamp';
-const STORAGE_HISTORY_KEY = 'vulncycleinsight_history';
+// 存储键名（按文章 id 隔离，每篇文章独立键）
+export function articleKeyFor(id: string, kind: 'content' | 'timestamp' | 'history'): string {
+  const prefix = `vulncycleinsight_article_${id}`;
+  if (kind === 'content') return prefix;
+  return `${prefix}_${kind}`;
+}
+
+// 旧版单篇存储键（用于数据迁移）
+export const LEGACY_CONTENT_KEY = 'vulncycleinsight_content';
+export const LEGACY_HISTORY_KEY = 'vulncycleinsight_history';
+
 const MAX_HISTORY_ENTRIES = 20;
 
 // 自动保存间隔（毫秒）
@@ -30,24 +37,56 @@ export class StorageManager {
   private autoSaveTimer: ReturnType<typeof setInterval> | null = null;
   private lastContent: string = '';
   private saveStatusCallback: ((status: SaveStatus) => void) | null = null;
+  private activeArticleId: string = '';
+
+  /**
+   * 设置当前活动文章 id，所有读写操作作用于该文章
+   */
+  setActiveArticleId(id: string): void {
+    this.activeArticleId = id;
+  }
+
+  /**
+   * 获取当前活动文章 id
+   */
+  getActiveArticleId(): string {
+    return this.activeArticleId;
+  }
+
+  private contentKey(): string {
+    return articleKeyFor(this.activeArticleId, 'content');
+  }
+
+  private timestampKey(): string {
+    return articleKeyFor(this.activeArticleId, 'timestamp');
+  }
+
+  private historyKey(): string {
+    return articleKeyFor(this.activeArticleId, 'history');
+  }
 
   /**
    * 保存内容到 LocalStorage
    */
   saveToLocalStorage(content: string): void {
     try {
-      localStorage.setItem(STORAGE_KEY, content);
-      localStorage.setItem(STORAGE_TIMESTAMP_KEY, new Date().toISOString());
+      localStorage.setItem(this.contentKey(), content);
+      localStorage.setItem(this.timestampKey(), new Date().toISOString());
       this.lastContent = content;
       this.addHistoryEntry(content);
     } catch (error) {
       logger.error('保存到 LocalStorage 失败:', error);
       // 如果存储空间不足，尝试清理旧数据
       if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-        this.clearStorage();
+        // 优先清理历史版本（冗余数据），避免正文与时间戳丢失
         try {
-          localStorage.setItem(STORAGE_KEY, content);
-          localStorage.setItem(STORAGE_TIMESTAMP_KEY, new Date().toISOString());
+          localStorage.removeItem(this.historyKey());
+        } catch (historyError) {
+          logger.error('清理历史版本失败:', historyError);
+        }
+        try {
+          localStorage.setItem(this.contentKey(), content);
+          localStorage.setItem(this.timestampKey(), new Date().toISOString());
           this.lastContent = content;
           this.addHistoryEntry(content);
         } catch (retryError) {
@@ -62,7 +101,7 @@ export class StorageManager {
    */
   loadFromLocalStorage(): string | null {
     try {
-      return localStorage.getItem(STORAGE_KEY);
+      return localStorage.getItem(this.contentKey());
     } catch (error) {
       logger.error('从 LocalStorage 加载失败:', error);
       return null;
@@ -70,11 +109,31 @@ export class StorageManager {
   }
 
   /**
+   * 检查当前活动文章是否已有保存的内容（键存在即视为已保存，包括空字符串）
+   */
+  hasSavedContent(): boolean {
+    try {
+      return localStorage.getItem(this.contentKey()) !== null;
+    } catch (error) {
+      logger.error('检查保存内容失败:', error);
+      return false;
+    }
+  }
+
+  /**
+   * 标记内容为已保存（仅同步内部状态，不写存储）
+   * 用于加载/切换文章后校正保存状态，避免误报"未保存"
+   */
+  markSaved(content: string): void {
+    this.lastContent = content;
+  }
+
+  /**
    * 获取最后保存时间
    */
   getLastSavedTime(): Date | null {
     try {
-      const timestamp = localStorage.getItem(STORAGE_TIMESTAMP_KEY);
+      const timestamp = localStorage.getItem(this.timestampKey());
       return timestamp ? new Date(timestamp) : null;
     } catch (error) {
       logger.error('获取保存时间失败:', error);
@@ -86,13 +145,23 @@ export class StorageManager {
    * 清除 LocalStorage 中的数据
    */
   clearStorage(): void {
+    this.removeArticleStorage(this.activeArticleId);
+  }
+
+  /**
+   * 删除指定文章的全部存储（正文、时间戳、历史版本）
+   */
+  removeArticleStorage(id: string): void {
+    if (!id) return;
     try {
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem(STORAGE_TIMESTAMP_KEY);
-      localStorage.removeItem(STORAGE_HISTORY_KEY);
-      this.lastContent = '';
+      localStorage.removeItem(articleKeyFor(id, 'content'));
+      localStorage.removeItem(articleKeyFor(id, 'timestamp'));
+      localStorage.removeItem(articleKeyFor(id, 'history'));
+      if (id === this.activeArticleId) {
+        this.lastContent = '';
+      }
     } catch (error) {
-      logger.error('清除存储失败:', error);
+      logger.error('清除文章存储失败:', error);
     }
   }
 
@@ -237,7 +306,7 @@ export class StorageManager {
 
   private readHistoryEntries(): HistoryEntry[] {
     try {
-      const raw = localStorage.getItem(STORAGE_HISTORY_KEY);
+      const raw = localStorage.getItem(this.historyKey());
       if (!raw) return [];
       const parsed = JSON.parse(raw);
       if (!Array.isArray(parsed)) return [];
@@ -276,12 +345,12 @@ export class StorageManager {
 
   private writeHistoryEntries(entries: HistoryEntry[]): void {
     try {
-      localStorage.setItem(STORAGE_HISTORY_KEY, JSON.stringify(entries));
+      localStorage.setItem(this.historyKey(), JSON.stringify(entries));
     } catch (error) {
       if (error instanceof DOMException && error.name === 'QuotaExceededError') {
         const trimmedEntries = entries.slice(0, Math.max(1, Math.floor(MAX_HISTORY_ENTRIES / 2)));
         try {
-          localStorage.setItem(STORAGE_HISTORY_KEY, JSON.stringify(trimmedEntries));
+          localStorage.setItem(this.historyKey(), JSON.stringify(trimmedEntries));
         } catch (retryError) {
           logger.error('保存历史版本失败:', retryError);
         }
