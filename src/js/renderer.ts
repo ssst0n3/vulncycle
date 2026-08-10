@@ -1,3 +1,4 @@
+import DOMPurify from 'dompurify';
 import { Marked } from 'marked';
 import { markedHighlight } from 'marked-highlight';
 import hljs from 'highlight.js';
@@ -484,13 +485,21 @@ marked.setOptions({
   gfm: true,
 });
 
+// 净化 marked 输出的 HTML：保留排版能力（class/data-*/style 属性、表格、图片、代码块），
+// 移除脚本执行能力（事件属性、javascript: 协议、全局样式/嵌入标签）。
+function sanitizeHtml(html: string): string {
+  return DOMPurify.sanitize(html, {
+    FORBID_TAGS: ['style', 'iframe', 'form', 'object', 'embed'],
+  });
+}
+
 const renderMarkdown = (markdown: string): string => {
   const rendered = marked.parse(markdown);
   if (rendered instanceof Promise) {
     throw new Error('Markdown rendering unexpectedly returned a Promise');
   }
-  // 先添加 hljs 类，再包装代码块
-  return wrapCodeBlocks(ensureHljsClass(rendered));
+  // 先净化（移除脚本执行能力），再添加 hljs 类，最后包装代码块
+  return wrapCodeBlocks(ensureHljsClass(sanitizeHtml(rendered)));
 };
 
 // 解析 Markdown 链接格式 [text](url)
@@ -505,13 +514,39 @@ function parseMarkdownLink(value: string): { text: string; url: string } | null 
   return null;
 }
 
+// 允许的 URL 协议白名单（相对路径/无协议文本不在此列，属安全范围）
+const SAFE_URL_PROTOCOLS = /^(https?:|mailto:|ftp:)/i;
+
+// 浏览器解析 href 前会剥离 ASCII tab/newline（WHATWG URL 规范），
+// 空格/NUL 虽会被解析为相对路径或替换字符，但防御纵深下一并清理，
+// 防止 "java\tscript:alert(1)"、"java script:alert(1)" 这类混淆绕过
+function cleanUrl(url: string): string {
+  return url.trim().replace(/[\t\n\r\u0000 ]/g, '');
+}
+
+// 校验 URL 是否使用安全协议，拒绝 javascript:、data: 等可执行协议
+function isSafeUrl(url: string): boolean {
+  const cleaned = cleanUrl(url);
+  // 含 scheme（形如 "scheme:..."）时必须命中白名单；无 scheme（相对路径等）视为安全
+  return !/^[a-z][a-z0-9+.-]*:/i.test(cleaned) || SAFE_URL_PROTOCOLS.test(cleaned);
+}
+
+// 渲染元数据链接；URL 协议不安全时降级为纯文本
+function renderMetadataLink(href: string, text: string): string {
+  if (!isSafeUrl(href)) {
+    return `<span class="metadata-value">${escapeHtml(text)}</span>`;
+  }
+  const cleanHref = cleanUrl(href);
+  return `<a class="metadata-value metadata-link" href="${escapeHtml(cleanHref)}" target="_blank" rel="noopener noreferrer">${escapeHtml(text)}</a>`;
+}
+
 // 解析并渲染包含 Markdown 链接的混合文本
 // 例如: "Michael Crosby([@crosbymichael](https://github.com/crosbymichael))"
 function renderValueWithMarkdownLinks(value: string): string {
   // 先检查是否是完整的 Markdown 链接格式
   const fullLink = parseMarkdownLink(value);
   if (fullLink) {
-    return `<a class="metadata-value metadata-link" href="${escapeHtml(fullLink.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(fullLink.text)}</a>`;
+    return renderMetadataLink(fullLink.url, fullLink.text);
   }
 
   // 检查是否包含 Markdown 链接模式 [text](url)
@@ -521,7 +556,7 @@ function renderValueWithMarkdownLinks(value: string): string {
   if (matches.length === 0) {
     // 没有链接，直接转义返回
     if (value.startsWith('http') || value.includes('://')) {
-      return `<a class="metadata-value metadata-link" href="${escapeHtml(value)}" target="_blank" rel="noopener noreferrer">${escapeHtml(value)}</a>`;
+      return renderMetadataLink(value, value);
     }
     return `<span class="metadata-value">${escapeHtml(value)}</span>`;
   }
@@ -540,10 +575,10 @@ function renderValueWithMarkdownLinks(value: string): string {
       result += escapeHtml(textBefore);
     }
 
-    // 添加链接
+    // 添加链接（协议不安全时降级为纯文本）
     const linkText = match[1];
     const linkUrl = match[2];
-    result += `<a class="metadata-value metadata-link" href="${escapeHtml(linkUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkText)}</a>`;
+    result += renderMetadataLink(linkUrl, linkText);
 
     lastIndex = matchIndex + matchLength;
   });

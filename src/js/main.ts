@@ -1914,7 +1914,15 @@ function showSaveNotification(message: string, type: NotificationType = 'success
     info: 'ℹ',
   };
 
-  notification.innerHTML = `<span class="notification-icon">${iconMap[type]}</span><span class="notification-message">${message}</span>`;
+  // 用 DOM 构建替代 innerHTML，避免 message 中的 HTML 被解析执行
+  const iconSpan = document.createElement('span');
+  iconSpan.className = 'notification-icon';
+  iconSpan.textContent = iconMap[type];
+  const messageSpan = document.createElement('span');
+  messageSpan.className = 'notification-message';
+  messageSpan.textContent = message;
+  notification.appendChild(iconSpan);
+  notification.appendChild(messageSpan);
   document.body.appendChild(notification);
 
   // 触发动画
