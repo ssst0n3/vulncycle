@@ -17,11 +17,17 @@ const ARTICLES_INDEX_KEY = 'vulncycleinsight_articles';
 const ACTIVE_ARTICLE_KEY = 'vulncycleinsight_active_article';
 const MIGRATED_KEY = 'vulncycleinsight_migrated_v1';
 
+// 报告类型
+// analysis: 漏洞分析报告（生命周期视角）；hunting: 漏洞挖掘报告（发现过程视角）
+export type ArticleType = 'analysis' | 'hunting';
+
 export interface ArticleMeta {
   id: string;
   title: string;
   createdAt: string;
   updatedAt: string;
+  /** 报告类型（缺省视为 analysis，兼容旧数据） */
+  type?: ArticleType;
   /** 手动重命名后锁定标题，不再随正文自动更新 */
   titleLocked?: boolean;
   /** 该报告绑定的 GitHub 云端目标（优先于全局配置） */
@@ -81,13 +87,20 @@ export class DocumentStore {
   }
 
   /**
+   * 获取指定文章类型（缺省 analysis）
+   */
+  getArticleType(id: string): ArticleType {
+    return this.getArticleById(id)?.type === 'hunting' ? 'hunting' : 'analysis';
+  }
+
+  /**
    * 新建文章：写入索引、保存正文、设为活动文章
    */
-  createArticle(content: string): ArticleMeta {
+  createArticle(content: string, type: ArticleType = 'analysis'): ArticleMeta {
     const now = new Date().toISOString();
     const id = `${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
     const title = this.extractTitleFromContent(content) ?? this.nextUntitledName();
-    const meta: ArticleMeta = { id, title, createdAt: now, updatedAt: now };
+    const meta: ArticleMeta = { id, title, createdAt: now, updatedAt: now, type };
 
     const list = this.readIndex();
     list.push(meta);

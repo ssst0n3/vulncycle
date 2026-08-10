@@ -4188,3 +4188,39 @@ pre {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ===== 新建报告类型小菜单 ===== */
+.article-new-menu {
+  position: absolute;
+  top: 40px;
+  right: 8px;
+  z-index: 50;
+  min-width: 130px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  background: var(--bg-primary);
+  border: 1px solid rgba(102, 126, 234, 0.25);
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+}
+
+.article-new-menu button {
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 5px;
+  font-size: 0.85em;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.article-new-menu button:hover {
+  background: rgba(102, 126, 234, 0.12);
+  color: var(--color-primary);
+}

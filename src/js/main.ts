@@ -12,7 +12,7 @@ import {
   updateLifecycleView,
 } from './renderer.js';
 import { storageManager, type HistoryEntry, type SaveStatus } from './storage.js';
-import { documentStore, type GithubBinding } from './documentStore.js';
+import { documentStore, type ArticleType, type GithubBinding } from './documentStore.js';
 import { formatSaveLocation, type SaveMode } from './saveLocation.js';
 import {
   readFromGist,
@@ -320,15 +320,46 @@ function initApp(): void {
   initTimelineToggle();
 }
 
+// 按当前报告类型刷新视图按钮显隐；当前视图不可用时回落到 lifecycle
+function updateViewButtonsForType(): void {
+  const type = currentArticleType();
+  const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('.view-btn'));
+  const available: ViewType[] = [];
+
+  buttons.forEach(btn => {
+    const types = (btn.dataset.types ?? '').split(/\s+/).filter(Boolean);
+    const visible = types.includes(type);
+    btn.style.display = visible ? '' : 'none';
+    if (visible && btn.dataset.view) {
+      available.push(btn.dataset.view as ViewType);
+    }
+  });
+
+  if (!available.includes(currentView)) {
+    currentView = 'lifecycle';
+  }
+
+  buttons.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.view === currentView);
+  });
+
+  updateTimelineToggleVisibility();
+}
+
+// 切换报告后校正视图（类型变化导致当前视图不可用时重新渲染）
+function refreshViewForArticle(editor: EditorView, previewContent: HTMLElement): void {
+  const prevView = currentView;
+  updateViewButtonsForType();
+  if (prevView !== currentView) {
+    renderCurrentView(editor.state.doc.toString(), previewContent);
+    applyTimelineVisibility();
+  }
+}
+
 // 初始化视图切换功能
 function initViewSwitcher(editor: EditorView, previewContent: HTMLElement): void {
-  const lifecycleBtn = document.getElementById('lifecycle-view-btn');
-  const exploitabilityBtn = document.getElementById('exploitability-view-btn');
-  const intelligenceBtn = document.getElementById('intelligence-view-btn');
-  const analysisBtn = document.getElementById('analysis-view-btn');
-  const completionBtn = document.getElementById('completion-view-btn');
-
-  if (!lifecycleBtn || !exploitabilityBtn || !intelligenceBtn || !analysisBtn || !completionBtn) {
+  const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('.view-btn'));
+  if (!buttons.length) {
     logger.error('View switcher buttons not found');
     return;
   }
@@ -337,11 +368,9 @@ function initViewSwitcher(editor: EditorView, previewContent: HTMLElement): void
     currentView = viewType;
 
     // 更新按钮状态
-    lifecycleBtn.classList.toggle('active', viewType === 'lifecycle');
-    exploitabilityBtn.classList.toggle('active', viewType === 'exploitability');
-    intelligenceBtn.classList.toggle('active', viewType === 'intelligence');
-    analysisBtn.classList.toggle('active', viewType === 'analysis');
-    completionBtn.classList.toggle('active', viewType === 'completion');
+    buttons.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.view === viewType);
+    });
 
     // 更新时间轴控制按钮的可见性
     updateTimelineToggleVisibility();
@@ -354,11 +383,17 @@ function initViewSwitcher(editor: EditorView, previewContent: HTMLElement): void
     applyTimelineVisibility();
   };
 
-  lifecycleBtn.addEventListener('click', () => switchView('lifecycle'));
-  exploitabilityBtn.addEventListener('click', () => switchView('exploitability'));
-  intelligenceBtn.addEventListener('click', () => switchView('intelligence'));
-  analysisBtn.addEventListener('click', () => switchView('analysis'));
-  completionBtn.addEventListener('click', () => switchView('completion'));
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const viewType = btn.dataset.view as ViewType | undefined;
+      if (viewType) {
+        switchView(viewType);
+      }
+    });
+  });
+
+  // 初始按当前报告类型校正可见视图
+  updateViewButtonsForType();
 }
 
 // 加载当前活动文章（无保存内容时回退到模板）
@@ -407,11 +442,7 @@ async function handleTemplateReload(
   }
 
   try {
-    const templateUrl = new URL(
-      'TEMPLATE.md',
-      `${window.location.origin}${import.meta.env.BASE_URL}`
-    ).toString();
-    const response = await fetch(templateUrl);
+    const response = await fetch(templateUrlFor(currentArticleType()));
     if (!response.ok) {
       throw new Error('Failed to load template');
     }
@@ -473,13 +504,28 @@ function setEditorContent(
   storageManager.seedHistory(content);
 }
 
-// 获取模板文本
-async function fetchTemplateText(): Promise<string> {
-  const templateUrl = new URL(
-    'TEMPLATE.md',
+// 模板文件按报告类型映射
+const TEMPLATE_BY_TYPE: Record<ArticleType, string> = {
+  analysis: 'TEMPLATE.md',
+  hunting: 'TEMPLATE_REPORT.md',
+};
+
+// 当前活动文章类型（无活动文章时按 analysis）
+function currentArticleType(): ArticleType {
+  const activeId = documentStore.getActiveArticleId();
+  return activeId ? documentStore.getArticleType(activeId) : 'analysis';
+}
+
+function templateUrlFor(type: ArticleType): string {
+  return new URL(
+    TEMPLATE_BY_TYPE[type],
     `${window.location.origin}${import.meta.env.BASE_URL}`
   ).toString();
-  const response = await fetch(templateUrl);
+}
+
+// 获取模板文本
+async function fetchTemplateText(type: ArticleType = currentArticleType()): Promise<string> {
+  const response = await fetch(templateUrlFor(type));
   if (!response.ok) {
     throw new Error('Failed to load template');
   }
@@ -490,6 +536,52 @@ async function fetchTemplateText(): Promise<string> {
 function closeArticleSidebar(): void {
   const sidebar = document.getElementById('article-sidebar');
   sidebar?.classList.remove('open');
+}
+
+// 新建报告类型小菜单（分析/挖掘）
+function toggleNewArticleMenu(sidebar: HTMLElement, anchor: HTMLElement): void {
+  const existing = sidebar.querySelector('.article-new-menu');
+  if (existing) {
+    existing.remove();
+    return;
+  }
+
+  const menu = document.createElement('div');
+  menu.className = 'article-new-menu';
+
+  const analysisItem = document.createElement('button');
+  analysisItem.type = 'button';
+  analysisItem.textContent = '分析报告';
+  analysisItem.title = '创建漏洞分析报告（生命周期视角）';
+  analysisItem.addEventListener('click', () => {
+    menu.remove();
+    void handleNewArticle('analysis');
+  });
+
+  const huntingItem = document.createElement('button');
+  huntingItem.type = 'button';
+  huntingItem.textContent = '挖掘报告';
+  huntingItem.title = '创建漏洞挖掘报告（发现过程视角）';
+  huntingItem.addEventListener('click', () => {
+    menu.remove();
+    void handleNewArticle('hunting');
+  });
+
+  menu.appendChild(analysisItem);
+  menu.appendChild(huntingItem);
+  sidebar.appendChild(menu);
+
+  // 点击菜单外部时关闭
+  const closeOnOutside = (event: MouseEvent) => {
+    const target = event.target as Node;
+    if (!menu.contains(target) && target !== anchor) {
+      menu.remove();
+      document.removeEventListener('click', closeOnOutside);
+    }
+  };
+  setTimeout(() => {
+    document.addEventListener('click', closeOnOutside);
+  }, 0);
 }
 
 // 初始化文章侧边栏（浮动抽屉）
@@ -504,9 +596,10 @@ function initArticleSidebar(editor: EditorView, previewContent: HTMLElement): vo
 
   renderArticleList();
 
-  if (newBtn) {
-    newBtn.addEventListener('click', () => {
-      void handleNewArticle();
+  if (newBtn && sidebar) {
+    newBtn.addEventListener('click', event => {
+      event.stopPropagation();
+      toggleNewArticleMenu(sidebar, newBtn);
     });
   }
 
@@ -611,26 +704,28 @@ function switchArticle(id: string): void {
   renderArticleList();
   closeArticleSidebar();
   syncGithubConfigForArticle?.(id);
+  refreshViewForArticle(sidebarEditor, sidebarPreview);
 }
 
-// 新建文章
-async function handleNewArticle(): Promise<void> {
+// 新建报告
+async function handleNewArticle(type: ArticleType = 'analysis'): Promise<void> {
   if (!sidebarEditor || !sidebarPreview) return;
 
   persistArticle(sidebarEditor.state.doc.toString());
 
   let content = '';
   try {
-    content = await fetchTemplateText();
+    content = await fetchTemplateText(type);
   } catch (err) {
     logger.warn('模板加载失败，使用空文档:', err);
   }
 
-  documentStore.createArticle(content);
+  documentStore.createArticle(content, type);
   setEditorContent(sidebarEditor, sidebarPreview, content);
   renderArticleList();
   closeArticleSidebar();
   syncGithubConfigForArticle?.(documentStore.getActiveArticleId());
+  refreshViewForArticle(sidebarEditor, sidebarPreview);
   showSaveNotification('已新建报告');
 }
 
@@ -662,10 +757,12 @@ function handleDeleteArticle(id: string): void {
       const content = storageManager.loadFromLocalStorage() ?? '';
       setEditorContent(sidebarEditor, sidebarPreview, content);
       syncGithubConfigForArticle?.(nextId);
+      refreshViewForArticle(sidebarEditor, sidebarPreview);
     } else {
       documentStore.createArticle('');
       setEditorContent(sidebarEditor, sidebarPreview, '');
       syncGithubConfigForArticle?.(documentStore.getActiveArticleId());
+      refreshViewForArticle(sidebarEditor, sidebarPreview);
     }
   }
   renderArticleList();
