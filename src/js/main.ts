@@ -1138,14 +1138,29 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
         branch: binding.branch,
         path: binding.path,
       });
-      bindingStatusEl.textContent = `本报告已绑定，保存位置：${location}`;
+      bindingStatusEl.textContent =
+        config.mode === 'local'
+          ? '本报告已绑定云端，当前为 Local 模式；如需改回本地保存，请点「解除绑定」'
+          : `本报告已绑定，保存位置：${location}`;
       bindBtn.textContent = '更新绑定';
+      bindBtn.title =
+        config.mode === 'local'
+          ? 'Local 模式下无法更新云端绑定；如需改回本地保存，请点「解除绑定」'
+          : '';
       unbindBtn.disabled = false;
+      unbindBtn.classList.toggle('bind-guide', config.mode === 'local');
     } else {
-      bindingStatusEl.textContent = '本报告未绑定，使用全局保存位置';
+      bindingStatusEl.textContent =
+        config.mode === 'local'
+          ? '本报告未绑定，Local 模式下无法绑定云端目标'
+          : '本报告未绑定，使用全局保存位置';
       bindBtn.textContent = '绑定当前配置到本报告';
-      bindBtn.disabled = config.mode === 'local';
+      bindBtn.title =
+        config.mode === 'local'
+          ? 'Local 模式下无法绑定云端目标，请先切换到 Gist 或 Repo'
+          : '';
       unbindBtn.disabled = true;
+      unbindBtn.classList.remove('bind-guide');
     }
   };
 
@@ -1253,7 +1268,14 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
 
   bindBtn?.addEventListener('click', () => {
     const activeId = documentStore.getActiveArticleId();
-    if (!activeId || config.mode === 'local') return;
+    if (!activeId) return;
+    if (config.mode === 'local') {
+      setStatus(
+        '当前为 Local 模式，无法更新云端绑定；如需改回本地保存，请点击「解除绑定」',
+        'error'
+      );
+      return;
+    }
     documentStore.setArticleGithub(activeId, toBinding(config));
     updateBindingStatus();
     setStatus('已绑定当前配置到本报告', 'success');
@@ -1264,7 +1286,8 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
     const activeId = documentStore.getActiveArticleId();
     if (!activeId) return;
     documentStore.setArticleGithub(activeId, null);
-    updateBindingStatus();
+    // 重新加载全局配置并刷新全部相关 UI（模式、输入框、保存按钮、预览位置徽章）
+    syncGithubConfigForArticle?.(activeId);
     setStatus('已解除绑定，恢复使用全局配置', 'info');
     showSaveNotification('已解除云端绑定');
   });
