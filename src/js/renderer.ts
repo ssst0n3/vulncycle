@@ -1848,3 +1848,108 @@ export function renderCompletionView(markdown: string, container: HTMLElement): 
 
   container.innerHTML = html;
 }
+
+// 漏洞上报视图：组合 hunting 报告中面向社区上报的章节
+// stageNum 对应 hunting 模板（TEMPLATE_REPORT.md）的 ## N. 序号：
+// 1 基本信息 / 4 漏洞介绍 / 5 漏洞分析 / 6 漏洞复现 / 7 漏洞利用 / 8 漏洞报告 / 9 漏洞防护
+// 排除：2 漏洞引入、3 漏洞发现（内部研究过程）、10 漏洞公告（等待社区）
+// 复用生命周期视图的 .stage-card 结构（可折叠卡片、编号徽章、#锚点、元数据、摘要、子章节），不渲染时间轴
+const REPORT_VIEW_STAGE_NUMS = [1, 4, 5, 6, 7, 8, 9];
+
+export function renderReportView(markdown: string, container: HTMLElement): void {
+  if (!markdown.trim()) {
+    container.innerHTML =
+      '<div class="lifecycle-container"><p style="text-align: center; color: #999; padding: 40px;">请在左侧输入 Markdown 内容...</p></div>';
+    return;
+  }
+
+  const title = extractTitle(markdown);
+  const stages = parseLifecycleStages(markdown);
+  const reportStages = stages
+    .filter(s => s.stageNum !== null && REPORT_VIEW_STAGE_NUMS.includes(s.stageNum))
+    .sort((a, b) => (a.stageNum as number) - (b.stageNum as number));
+
+  let html = '<div class="lifecycle-container">';
+  html += `<h1 class="lifecycle-title">${escapeHtml(title)}</h1>`;
+
+  if (reportStages.length === 0) {
+    html += '<div class="lifecycle-stages">';
+    html +=
+      '<div class="stage-content"><p style="text-align: center; color: #999; padding: 40px;">未找到漏洞上报相关内容，请确保文档使用挖掘报告模板（## 1. 基本信息 … ## 9. 漏洞防护）。</p></div>';
+    html += '</div>';
+  } else {
+    html += '<div class="timeline-wrapper">';
+    html += '<div class="timeline-container">';
+    html += '<div class="timeline-content-wrapper">';
+
+    reportStages.forEach((stage, stageIndex) => {
+      const stageNum = stage.stageNum as number;
+      // 漏洞上报视图按上报文档自身顺序连续编号 1-7
+      const displayNum = stageIndex + 1;
+      const content = stage.content.trim();
+      const summary = extractSummary(content);
+      const lineAttr = stage.startLine ? ` data-line="${stage.startLine}"` : '';
+
+      html += `<div class="timeline-node-group" data-index="${stageIndex}">`;
+      html += '<div class="timeline-content-area">';
+      html += '<div class="timeline-stages-container">';
+
+      html += `<div class="lifecycle-stage collapsed" data-stage="${displayNum}" data-node-index="${stageIndex}" data-stage-index="0">`;
+      html += '<div class="stage-card">';
+
+      // 阶段头部
+      html += '<div class="stage-header">';
+      html += '<div class="stage-header-left">';
+      html += `<div class="stage-number-badge" data-stage="${displayNum}">${displayNum}</div>`;
+      html += `<span class="stage-header-title">${escapeHtml(stripStageNumberPrefix(stage.title))}</span>`;
+      html += `<button class="stage-anchor-btn" type="button"${lineAttr} title="跳转到编辑器对应位置">#</button>`;
+      html += '</div>';
+
+      // 元数据区域（基本信息阶段不显示元数据）
+      if (stage.metadata && stageNum !== 1) {
+        html += renderMetadataHtml(stage.metadata);
+      }
+
+      html += '<span class="stage-toggle-icon">▼</span>';
+      html += '</div>';
+
+      // 摘要（仅在折叠时显示）
+      if (summary) {
+        html += `<div class="stage-summary">${escapeHtml(summary)}</div>`;
+      }
+
+      // 阶段内容
+      if (content) {
+        html += `<div class="stage-body">${renderMarkdown(content)}</div>`;
+      } else {
+        html += '<div class="stage-body"><p class="stage-empty">暂无内容</p></div>';
+      }
+
+      html += '</div>'; // stage-card
+      html += '</div>'; // lifecycle-stage
+
+      html += '</div>'; // timeline-stages-container
+      html += '</div>'; // timeline-content-area
+      html += '</div>'; // timeline-node-group
+    });
+
+    html += '</div>'; // timeline-content-wrapper
+    html += '</div>'; // timeline-container
+    html += '</div>'; // timeline-wrapper
+  }
+
+  html += '</div>';
+  container.innerHTML = html;
+
+  // 复用生命周期视图的子章节折叠与标题锚点后处理
+  applyLifecycleSubsections(container);
+  reportStages.forEach((stage, stageIndex) => {
+    const stageElement = container.querySelector<HTMLElement>(
+      `.lifecycle-stage[data-node-index="${stageIndex}"][data-stage-index="0"]`
+    );
+    if (!stageElement) return;
+    const body = stageElement.querySelector<HTMLElement>('.stage-body');
+    if (!body) return;
+    applyHeadingAnchors(body, stage.headings);
+  });
+}

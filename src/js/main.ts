@@ -9,6 +9,7 @@ import {
   renderIntelligenceView,
   renderAnalysisView,
   renderCompletionView,
+  renderReportView,
   updateLifecycleView,
 } from './renderer.js';
 import { storageManager, type HistoryEntry, type SaveStatus } from './storage.js';
@@ -31,7 +32,7 @@ import {
 import { EditorView } from '@codemirror/view';
 
 // 视图类型
-type ViewType = 'lifecycle' | 'exploitability' | 'intelligence' | 'analysis' | 'completion';
+type ViewType = 'lifecycle' | 'exploitability' | 'intelligence' | 'analysis' | 'completion' | 'report';
 
 // 当前视图类型
 let currentView: ViewType = 'lifecycle';
@@ -214,6 +215,8 @@ function renderCurrentView(markdown: string, container: HTMLElement): void {
     renderIntelligenceView(markdown, container);
   } else if (currentView === 'analysis') {
     renderAnalysisView(markdown, container);
+  } else if (currentView === 'report') {
+    renderReportView(markdown, container);
   } else {
     renderCompletionView(markdown, container);
   }

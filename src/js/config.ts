@@ -56,7 +56,10 @@ export function extractStageNumber(title: string): number | null {
   return null;
 }
 
-// 去除阶段标题中的中文序号前缀（如 "一、基本信息" → "基本信息"）
+// 去除阶段标题中的序号前缀（如 "一、基本信息" → "基本信息"、"4. 漏洞介绍" → "漏洞介绍"）
 export function stripStageNumberPrefix(title: string): string {
-  return title.replace(/^[一二三四五六七八九十]、\s*/, '').trim();
+  return title
+    .replace(/^[一二三四五六七八九十]、\s*/, '') // 中文序号：一、
+    .replace(/^\d+\.\s*/, '') // 阿拉伯数字序号：1.
+    .trim();
 }
