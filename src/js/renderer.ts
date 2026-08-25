@@ -1849,12 +1849,68 @@ export function renderCompletionView(markdown: string, container: HTMLElement): 
   container.innerHTML = html;
 }
 
-// 漏洞上报视图：组合 hunting 报告中面向社区上报的章节
-// stageNum 对应 hunting 模板（TEMPLATE_REPORT.md）的 ## N. 序号：
-// 1 基本信息 / 4 漏洞介绍 / 5 漏洞分析 / 6 漏洞复现 / 7 漏洞利用 / 8 漏洞报告 / 9 漏洞防护
-// 排除：2 漏洞引入、3 漏洞发现（内部研究过程）、10 漏洞公告（等待社区）
+// 漏洞上报视图：渲染 hunting 报告的"## 八、漏洞报告"章节（stageNum=8）作为面向社区的上报文档
+// 第8节下的三级子章节（### 1. 基本信息 / ### 2. 漏洞介绍 / ...）作为顶级卡片渲染，
+// 每个子章节一张可折叠卡片，与生命周期视图的 stage-card 视觉一致。
 // 复用生命周期视图的 .stage-card 结构（可折叠卡片、编号徽章、#锚点、元数据、摘要、子章节），不渲染时间轴
-const REPORT_VIEW_STAGE_NUMS = [1, 4, 5, 6, 7, 8, 9];
+
+// 解析三级子章节（### 标题），返回各子章节标题与内容
+interface ReportSubsection {
+  title: string;
+  content: string;
+  startLine: number | null;
+}
+
+function parseReportSubsections(content: string): ReportSubsection[] {
+  const subsections: ReportSubsection[] = [];
+  const lines = content.split('\n');
+  let current: { title: string; contentLines: string[]; startLine: number | null } | null = null;
+  let inFencedCodeBlock = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    // 跟踪围栏代码块，避免把代码块里的 ### 误判为标题
+    if (trimmed.match(/^ {0,3}(`{3,}|~{3,})/)) {
+      inFencedCodeBlock = !inFencedCodeBlock;
+      if (current) current.contentLines.push(line);
+      continue;
+    }
+    if (inFencedCodeBlock) {
+      if (current) current.contentLines.push(line);
+      continue;
+    }
+
+    // 检测三级标题（###）
+    const h3Match = line.match(/^###\s+(.+)$/);
+    if (h3Match) {
+      if (current) {
+        subsections.push({
+          title: current.title,
+          content: current.contentLines.join('\n').trim(),
+          startLine: current.startLine,
+        });
+      }
+      current = { title: h3Match[1].trim(), contentLines: [], startLine: i + 1 };
+      continue;
+    }
+
+    if (current) {
+      current.contentLines.push(line);
+    }
+  }
+
+  if (current) {
+    subsections.push({
+      title: current.title,
+      content: current.contentLines.join('\n').trim(),
+      startLine: current.startLine,
+    });
+  }
+
+  return subsections;
+}
 
 export function renderReportView(markdown: string, container: HTMLElement): void {
   if (!markdown.trim()) {
@@ -1865,77 +1921,96 @@ export function renderReportView(markdown: string, container: HTMLElement): void
 
   const title = extractTitle(markdown);
   const stages = parseLifecycleStages(markdown);
-  const reportStages = stages
-    .filter(s => s.stageNum !== null && REPORT_VIEW_STAGE_NUMS.includes(s.stageNum))
-    .sort((a, b) => (a.stageNum as number) - (b.stageNum as number));
+  const reportStage = stages.find(s => s.stageNum === 8);
 
   let html = '<div class="lifecycle-container">';
   html += `<h1 class="lifecycle-title">${escapeHtml(title)}</h1>`;
 
-  if (reportStages.length === 0) {
+  if (!reportStage) {
     html += '<div class="lifecycle-stages">';
     html +=
-      '<div class="stage-content"><p style="text-align: center; color: #999; padding: 40px;">未找到漏洞上报相关内容，请确保文档使用挖掘报告模板（## 1. 基本信息 … ## 9. 漏洞防护）。</p></div>';
+      '<div class="stage-content"><p style="text-align: center; color: #999; padding: 40px;">未找到漏洞报告章节，请在编辑器中使用挖掘报告模板（## 八、漏洞报告）。</p></div>';
     html += '</div>';
   } else {
-    html += '<div class="timeline-wrapper">';
-    html += '<div class="timeline-container">';
-    html += '<div class="timeline-content-wrapper">';
+    // 第8节的三级子章节作为顶级卡片
+    const subsections = parseReportSubsections(reportStage.content);
 
-    reportStages.forEach((stage, stageIndex) => {
-      const stageNum = stage.stageNum as number;
-      // 漏洞上报视图按上报文档自身顺序连续编号 1-7
-      const displayNum = stageIndex + 1;
-      const content = stage.content.trim();
-      const summary = extractSummary(content);
-      const lineAttr = stage.startLine ? ` data-line="${stage.startLine}"` : '';
-
-      html += `<div class="timeline-node-group" data-index="${stageIndex}">`;
+    if (subsections.length === 0) {
+      // 没有三级子章节，直接渲染第8节整体内容
+      html += '<div class="timeline-wrapper">';
+      html += '<div class="timeline-container">';
+      html += '<div class="timeline-content-wrapper">';
+      html += '<div class="timeline-node-group" data-index="0">';
       html += '<div class="timeline-content-area">';
       html += '<div class="timeline-stages-container">';
-
-      html += `<div class="lifecycle-stage collapsed" data-stage="${displayNum}" data-node-index="${stageIndex}" data-stage-index="0">`;
+      html += '<div class="lifecycle-stage expanded" data-stage="1" data-node-index="0" data-stage-index="0">';
       html += '<div class="stage-card">';
-
-      // 阶段头部
       html += '<div class="stage-header">';
       html += '<div class="stage-header-left">';
-      html += `<div class="stage-number-badge" data-stage="${displayNum}">${displayNum}</div>`;
-      html += `<span class="stage-header-title">${escapeHtml(stripStageNumberPrefix(stage.title))}</span>`;
-      html += `<button class="stage-anchor-btn" type="button"${lineAttr} title="跳转到编辑器对应位置">#</button>`;
+      html += '<div class="stage-number-badge" data-stage="1">1</div>';
+      html += `<span class="stage-header-title">${escapeHtml(stripStageNumberPrefix(reportStage.title))}</span>`;
+      const reportLineAttr = reportStage.startLine ? ` data-line="${reportStage.startLine}"` : '';
+      html += `<button class="stage-anchor-btn" type="button"${reportLineAttr} title="跳转到编辑器对应位置">#</button>`;
       html += '</div>';
-
-      // 元数据区域（基本信息阶段不显示元数据）
-      if (stage.metadata && stageNum !== 1) {
-        html += renderMetadataHtml(stage.metadata);
-      }
-
-      html += '<span class="stage-toggle-icon">▼</span>';
+      html += '<span class="stage-toggle-icon">▲</span>';
       html += '</div>';
-
-      // 摘要（仅在折叠时显示）
-      if (summary) {
-        html += `<div class="stage-summary">${escapeHtml(summary)}</div>`;
-      }
-
-      // 阶段内容
-      if (content) {
-        html += `<div class="stage-body">${renderMarkdown(content)}</div>`;
-      } else {
-        html += '<div class="stage-body"><p class="stage-empty">暂无内容</p></div>';
-      }
-
+      html += `<div class="stage-body">${renderMarkdown(reportStage.content.trim())}</div>`;
       html += '</div>'; // stage-card
       html += '</div>'; // lifecycle-stage
-
       html += '</div>'; // timeline-stages-container
       html += '</div>'; // timeline-content-area
       html += '</div>'; // timeline-node-group
-    });
+      html += '</div>'; // timeline-content-wrapper
+      html += '</div>'; // timeline-container
+      html += '</div>'; // timeline-wrapper
+    } else {
+      // 每个三级子章节作为一张顶级卡片
+      html += '<div class="timeline-wrapper">';
+      html += '<div class="timeline-container">';
+      html += '<div class="timeline-content-wrapper">';
 
-    html += '</div>'; // timeline-content-wrapper
-    html += '</div>'; // timeline-container
-    html += '</div>'; // timeline-wrapper
+      subsections.forEach((sub, index) => {
+        const displayNum = index + 1;
+        const content = sub.content.trim();
+        const summary = extractSummary(content);
+        const lineAttr = sub.startLine ? ` data-line="${sub.startLine}"` : '';
+        // 子章节标题去掉序号前缀（如 "1. 基本信息" → "基本信息"）
+        const cleanTitle = stripStageNumberPrefix(sub.title);
+
+        html += `<div class="timeline-node-group" data-index="${index}">`;
+        html += '<div class="timeline-content-area">';
+        html += '<div class="timeline-stages-container">';
+
+        html += `<div class="lifecycle-stage collapsed" data-stage="${displayNum}" data-node-index="${index}" data-stage-index="0">`;
+        html += '<div class="stage-card">';
+        html += '<div class="stage-header">';
+        html += '<div class="stage-header-left">';
+        html += `<div class="stage-number-badge" data-stage="${displayNum}">${displayNum}</div>`;
+        html += `<span class="stage-header-title">${escapeHtml(cleanTitle)}</span>`;
+        html += `<button class="stage-anchor-btn" type="button"${lineAttr} title="跳转到编辑器对应位置">#</button>`;
+        html += '</div>';
+        html += '<span class="stage-toggle-icon">▼</span>';
+        html += '</div>';
+        if (summary) {
+          html += `<div class="stage-summary">${escapeHtml(summary)}</div>`;
+        }
+        if (content) {
+          html += `<div class="stage-body">${renderMarkdown(content)}</div>`;
+        } else {
+          html += '<div class="stage-body"><p class="stage-empty">暂无内容</p></div>';
+        }
+        html += '</div>'; // stage-card
+        html += '</div>'; // lifecycle-stage
+
+        html += '</div>'; // timeline-stages-container
+        html += '</div>'; // timeline-content-area
+        html += '</div>'; // timeline-node-group
+      });
+
+      html += '</div>'; // timeline-content-wrapper
+      html += '</div>'; // timeline-container
+      html += '</div>'; // timeline-wrapper
+    }
   }
 
   html += '</div>';
@@ -1943,13 +2018,50 @@ export function renderReportView(markdown: string, container: HTMLElement): void
 
   // 复用生命周期视图的子章节折叠与标题锚点后处理
   applyLifecycleSubsections(container);
-  reportStages.forEach((stage, stageIndex) => {
-    const stageElement = container.querySelector<HTMLElement>(
-      `.lifecycle-stage[data-node-index="${stageIndex}"][data-stage-index="0"]`
-    );
-    if (!stageElement) return;
-    const body = stageElement.querySelector<HTMLElement>('.stage-body');
-    if (!body) return;
-    applyHeadingAnchors(body, stage.headings);
-  });
+
+  // 为每张卡片的 stage-body 注入标题锚点
+  if (reportStage) {
+    const subsections = parseReportSubsections(reportStage.content);
+    if (subsections.length > 0) {
+      subsections.forEach((sub, index) => {
+        const stageElement = container.querySelector<HTMLElement>(
+          `.lifecycle-stage[data-node-index="${index}"][data-stage-index="0"]`
+        );
+        if (!stageElement) return;
+        const body = stageElement.querySelector<HTMLElement>('.stage-body');
+        if (!body) return;
+        // 从子章节内容中提取标题行号信息（h4-h6）
+        const headings: StageHeading[] = [];
+        const lines = sub.content.split('\n');
+        let inCodeBlock = false;
+        for (let i = 0; i < lines.length; i++) {
+          const trimmed = lines[i].trim();
+          if (trimmed.match(/^ {0,3}(`{3,}|~{3,})/)) {
+            inCodeBlock = !inCodeBlock;
+            continue;
+          }
+          if (inCodeBlock) continue;
+          const m = lines[i].match(/^(#{1,6})\s+(.+)$/);
+          if (m) {
+            headings.push({
+              title: m[2].trim(),
+              level: m[1].length,
+              line: sub.startLine ? sub.startLine + i + 1 : 0,
+            });
+          }
+        }
+        applyHeadingAnchors(body, headings);
+      });
+    } else {
+      const stageElement = container.querySelector<HTMLElement>(
+        '.lifecycle-stage[data-node-index="0"][data-stage-index="0"]'
+      );
+      if (stageElement) {
+        const body = stageElement.querySelector<HTMLElement>('.stage-body');
+        if (body) {
+          applyHeadingAnchors(body, reportStage.headings);
+        }
+      }
+    }
+  }
 }
