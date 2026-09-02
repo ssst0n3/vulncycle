@@ -13,7 +13,7 @@ import {
   updateLifecycleView,
 } from './renderer.js';
 import { storageManager, type HistoryEntry, type SaveStatus } from './storage.js';
-import { documentStore, type ArticleType, type GithubBinding } from './documentStore.js';
+import { documentStore, type ArticleType } from './documentStore.js';
 import { formatSaveLocation, type SaveMode } from './saveLocation.js';
 import {
   readFromGist,
@@ -25,9 +25,13 @@ import {
 import {
   applyTemplate,
   clearGithubToken,
+  defaultGithubTarget,
+  isDefaultTarget,
   loadGithubConfig,
   saveGithubConfig,
+  type EffectiveGithubConfig,
   type GithubConfig,
+  type GithubTarget,
 } from './githubConfig.js';
 import { EditorView } from '@codemirror/view';
 
@@ -472,8 +476,8 @@ let sidebarPreview: HTMLElement | null = null;
 // 上次 touch 的文章内容（避免自动保存每 2 秒无条件刷新文章元数据）
 let lastTouchedContent: string | null = null;
 
-// 当前生效的 GitHub 配置（报告绑定优先于全局默认）
-let activeGithubConfig: GithubConfig = loadGithubConfig();
+// 当前生效的 GitHub 配置（全局凭据/偏好 + 当前报告的云端保存目标）
+let activeGithubConfig: EffectiveGithubConfig = { ...loadGithubConfig(), ...defaultGithubTarget() };
 
 // 切换报告时由 initGithubIntegration 注册的配置同步钩子
 let syncGithubConfigForArticle: ((id: string | null) => void) | null = null;
@@ -1020,9 +1024,6 @@ function updatePreviewLocation(): void {
     branch: activeGithubConfig.repoBranch,
     path: activeGithubConfig.repoPath,
   });
-  const activeId = documentStore.getActiveArticleId();
-  const binding = activeId ? documentStore.getArticleGithub(activeId) : null;
-
   const el = document.createElement('div');
   el.className = 'preview-location';
   el.title = previewLocationOpen ? '点击收起保存位置' : '点击查看保存位置';
@@ -1033,7 +1034,7 @@ function updatePreviewLocation(): void {
 
   const textSpan = document.createElement('span');
   textSpan.className = 'preview-location-text';
-  textSpan.textContent = binding ? `${location}（本报告绑定）` : location;
+  textSpan.textContent = location;
 
   el.appendChild(modeSpan);
   el.appendChild(textSpan);
@@ -1108,69 +1109,31 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
     return;
   }
 
-  let config: GithubConfig = loadGithubConfig();
+  let config: EffectiveGithubConfig = { ...loadGithubConfig(), ...defaultGithubTarget() };
   activeGithubConfig = config;
   let busy = false;
 
-  const bindingStatusEl = document.getElementById('github-binding-status');
-  const bindBtn = document.getElementById('github-bind-btn') as HTMLButtonElement | null;
-  const unbindBtn = document.getElementById('github-unbind-btn') as HTMLButtonElement | null;
-
-  // 云端目标字段 -> 绑定快照
-  const toBinding = (c: GithubConfig): GithubBinding => ({
-    mode: c.mode === 'local' ? 'gist' : c.mode,
-    gistId: c.gistId,
-    filename: c.gistFilename,
-    owner: c.repoOwner,
-    repo: c.repoName,
-    branch: c.repoBranch,
-    path: c.repoPath,
+  // 生效配置 -> 全局凭据/偏好部分
+  const globalOf = (c: EffectiveGithubConfig): GithubConfig => ({
+    token: c.token,
+    rememberToken: c.rememberToken,
+    commitMessage: c.commitMessage,
   });
 
-  const updateBindingStatus = () => {
-    if (!bindingStatusEl || !bindBtn || !unbindBtn) return;
-    const activeId = documentStore.getActiveArticleId();
-    const binding = activeId ? documentStore.getArticleGithub(activeId) : null;
-    if (binding) {
-      const location = formatSaveLocation({
-        mode: binding.mode,
-        gistId: binding.gistId,
-        filename: binding.filename,
-        owner: binding.owner,
-        repo: binding.repo,
-        branch: binding.branch,
-        path: binding.path,
-      });
-      bindingStatusEl.textContent =
-        config.mode === 'local'
-          ? '本报告已绑定云端，当前为 Local 模式；如需改回本地保存，请点「解除绑定」'
-          : `本报告已绑定，保存位置：${location}`;
-      bindBtn.textContent = '更新绑定';
-      bindBtn.title =
-        config.mode === 'local'
-          ? 'Local 模式下无法更新云端绑定；如需改回本地保存，请点「解除绑定」'
-          : '';
-      unbindBtn.disabled = false;
-      unbindBtn.classList.toggle('bind-guide', config.mode === 'local');
-    } else {
-      bindingStatusEl.textContent =
-        config.mode === 'local'
-          ? '本报告未绑定，Local 模式下无法绑定云端目标'
-          : '本报告未绑定，使用全局保存位置';
-      bindBtn.textContent = '绑定当前配置到本报告';
-      bindBtn.title =
-        config.mode === 'local'
-          ? 'Local 模式下无法绑定云端目标，请先切换到 Gist 或 Repo'
-          : '';
-      unbindBtn.disabled = true;
-      unbindBtn.classList.remove('bind-guide');
-    }
-  };
+  // 生效配置 -> 当前报告的云端保存目标
+  const toTarget = (c: EffectiveGithubConfig): GithubTarget => ({
+    mode: c.mode,
+    gistId: c.gistId,
+    gistFilename: c.gistFilename,
+    repoOwner: c.repoOwner,
+    repoName: c.repoName,
+    repoBranch: c.repoBranch,
+    repoPath: c.repoPath,
+  });
 
   const openModal = () => {
     modal.classList.remove('hidden');
     modal.setAttribute('aria-hidden', 'false');
-    updateBindingStatus();
   };
 
   const closeModal = () => {
@@ -1202,16 +1165,15 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
     loadBtn.disabled = disabled;
   };
 
-  // 云端目标存全局；若当前报告已绑定则同步更新绑定（token 等敏感字段始终只存全局）
+  // 全局凭据/偏好存全局；云端保存目标存当前报告（新建报告从干净默认开始，零继承）
   const persist = () => {
-    saveGithubConfig(config);
+    saveGithubConfig(globalOf(config));
     const activeId = documentStore.getActiveArticleId();
-    if (activeId && config.mode !== 'local') {
-      const binding = documentStore.getArticleGithub(activeId);
-      if (binding) {
-        documentStore.setArticleGithub(activeId, toBinding(config));
-      }
-    }
+    if (!activeId) return;
+    const next = toTarget(config);
+    // 从未配置过云端目标的报告不写入与默认一致的快照，保持索引干净
+    if (!documentStore.getArticleGithub(activeId) && isDefaultTarget(next)) return;
+    documentStore.setArticleGithub(activeId, next);
   };
 
   const syncModeUI = () => {
@@ -1234,11 +1196,10 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
       branch: config.repoBranch,
       path: config.repoPath,
     });
-    setStatus(`保存位置：${location}`, 'info');
+    setStatus(`当前报告保存位置：${location}`, 'info');
 
     // 更新顶部保存按钮文字
     updateSaveBtnLabel(config.mode);
-    updateBindingStatus();
     updatePreviewLocation();
   };
 
@@ -1252,65 +1213,29 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
     repoBranchInput.value = config.repoBranch;
     repoPathInput.value = config.repoPath;
     commitMessageInput.value = config.commitMessage;
-    if (!repoUrlInput.value) {
-      repoUrlInput.value = buildRepoFileUrl({
-        owner: config.repoOwner,
-        repo: config.repoName,
-        branch: config.repoBranch,
-        path: config.repoPath,
-      });
-    }
+    // 无条件重算文件地址：避免切换报告后残留上一篇的 URL
+    repoUrlInput.value = buildRepoFileUrl({
+      owner: config.repoOwner,
+      repo: config.repoName,
+      branch: config.repoBranch,
+      path: config.repoPath,
+    });
     syncModeUI();
   };
 
-  const updateConfig = (partial: Partial<GithubConfig>) => {
+  const updateConfig = (partial: Partial<EffectiveGithubConfig>) => {
     config = { ...config, ...partial };
+    // 同步模块级生效配置：顶部保存按钮/预览徽章依赖它，弹窗内改动需即时生效
+    activeGithubConfig = config;
     persist();
     syncModeUI();
   };
 
-  bindBtn?.addEventListener('click', () => {
-    const activeId = documentStore.getActiveArticleId();
-    if (!activeId) return;
-    if (config.mode === 'local') {
-      setStatus(
-        '当前为 Local 模式，无法更新云端绑定；如需改回本地保存，请点击「解除绑定」',
-        'error'
-      );
-      return;
-    }
-    documentStore.setArticleGithub(activeId, toBinding(config));
-    updateBindingStatus();
-    setStatus('已绑定当前配置到本报告', 'success');
-    showSaveNotification('已绑定云端目标到本报告');
-  });
-
-  unbindBtn?.addEventListener('click', () => {
-    const activeId = documentStore.getActiveArticleId();
-    if (!activeId) return;
-    documentStore.setArticleGithub(activeId, null);
-    // 重新加载全局配置并刷新全部相关 UI（模式、输入框、保存按钮、预览位置徽章）
-    syncGithubConfigForArticle?.(activeId);
-    setStatus('已解除绑定，恢复使用全局配置', 'info');
-    showSaveNotification('已解除云端绑定');
-  });
-
-  // 切换报告时同步生效配置（报告绑定优先于全局默认）
+  // 切换/新建报告时同步生效配置：全局凭据偏好 + 该报告自己的云端目标（无则干净默认）
   syncGithubConfigForArticle = (id: string | null) => {
     const globalConfig = loadGithubConfig();
-    const binding = id ? documentStore.getArticleGithub(id) : null;
-    config = binding
-      ? {
-          ...globalConfig,
-          mode: binding.mode,
-          gistId: binding.gistId ?? globalConfig.gistId,
-          gistFilename: binding.filename ?? globalConfig.gistFilename,
-          repoOwner: binding.owner ?? globalConfig.repoOwner,
-          repoName: binding.repo ?? globalConfig.repoName,
-          repoBranch: binding.branch ?? globalConfig.repoBranch,
-          repoPath: binding.path ?? globalConfig.repoPath,
-        }
-      : globalConfig;
+    const target = id ? documentStore.getArticleGithub(id) : null;
+    config = { ...globalConfig, ...(target ?? defaultGithubTarget()) };
     activeGithubConfig = config;
     applyConfigToInputs();
   };
@@ -1562,6 +1487,7 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
   clearTokenBtn?.addEventListener('click', () => {
     clearGithubToken();
     config = { ...config, token: '', rememberToken: false };
+    activeGithubConfig = config;
     applyConfigToInputs();
     setStatus('已清除令牌', 'info');
   });
@@ -1657,7 +1583,8 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
     void handleLoad();
   });
 
-  applyConfigToInputs();
+  // 启动即应用当前报告自己的云端目标（而非仅全局配置），修复首次加载时绑定被忽略的缺口
+  syncGithubConfigForArticle(documentStore.getActiveArticleId());
   setBusy(false);
 }
 

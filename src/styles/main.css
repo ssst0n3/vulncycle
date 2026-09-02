@@ -4101,51 +4101,6 @@ pre {
   color: var(--text-secondary);
 }
 
-/* ===== 报告云端绑定 ===== */
-.github-binding-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px var(--spacing-md);
-  border-top: 1px solid rgba(102, 126, 234, 0.15);
-  font-size: 0.82em;
-  color: var(--text-muted);
-  flex-wrap: wrap;
-}
-
-.github-binding-status {
-  flex: 1;
-  min-width: 160px;
-}
-
-.github-binding-row .github-ghost-btn {
-  padding: 4px 10px;
-  font-size: 0.82em;
-}
-
-/* Local 模式下引导用户使用「解除绑定」回到本地保存 */
-.github-binding-row .github-ghost-btn.bind-guide {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  background: rgba(102, 126, 234, 0.08);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .github-binding-row .github-ghost-btn.bind-guide {
-    animation: bind-guide-pulse 2s ease-in-out infinite;
-  }
-}
-
-@keyframes bind-guide-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(102, 126, 234, 0);
-  }
-  50% {
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.25);
-  }
-}
-
 /* ===== 预览内容顶部的保存位置块（默认 badge，点击展开）===== */
 .preview-location {
   display: flex;
@@ -4204,12 +4159,6 @@ pre {
 
 .preview-location-mode.repo {
   background: #43e97b;
-}
-
-#preview-location-text {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* ===== 新建报告类型小菜单 ===== */

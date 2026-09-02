@@ -5,6 +5,7 @@
  */
 
 import { logger } from './logger.js';
+import { normalizeGithubTarget, type GithubTarget } from './githubConfig.js';
 import {
   storageManager,
   articleKeyFor,
@@ -30,19 +31,8 @@ export interface ArticleMeta {
   type?: ArticleType;
   /** 手动重命名后锁定标题，不再随正文自动更新 */
   titleLocked?: boolean;
-  /** 该报告绑定的 GitHub 云端目标（优先于全局配置） */
-  github?: GithubBinding;
-}
-
-/** 报告的 GitHub 云端绑定（全局配置的云端字段快照） */
-export interface GithubBinding {
-  mode: 'gist' | 'repo';
-  gistId?: string;
-  filename?: string;
-  owner?: string;
-  repo?: string;
-  branch?: string;
-  path?: string;
+  /** 该报告的云端保存目标（按报告独立存储；未配置则无此字段，生效时取干净默认） */
+  github?: GithubTarget;
 }
 
 export class DocumentStore {
@@ -145,16 +135,18 @@ export class DocumentStore {
   }
 
   /**
-   * 获取指定报告的云端绑定（无则返回 null）
+   * 获取指定报告的云端保存目标（无则返回 null）
+   * 读取时规范化：兼容旧字段名（filename/owner/repo/branch/path）并补齐缺省
    */
-  getArticleGithub(id: string): GithubBinding | null {
-    return this.getArticleById(id)?.github ?? null;
+  getArticleGithub(id: string): GithubTarget | null {
+    const raw = this.getArticleById(id)?.github;
+    return raw ? normalizeGithubTarget(raw) : null;
   }
 
   /**
-   * 设置/更新指定报告的云端绑定（传 null 解除绑定）
+   * 设置/更新指定报告的云端保存目标（传 null 清除）
    */
-  setArticleGithub(id: string, github: GithubBinding | null): void {
+  setArticleGithub(id: string, github: GithubTarget | null): void {
     const list = this.readIndex();
     const meta = list.find(item => item.id === id);
     if (!meta) return;
