@@ -61,8 +61,6 @@
   --page-gutter: clamp(16px, 1.4vw, 32px);
   --pane-pad: clamp(12px, 1vw, 18px);
   --rail-gutter: clamp(30px, 2.8vw, 44px);
-  /* 正文阅读宽度按字符数约束，避免宽屏下单行过长 */
-  --measure: 78ch;
 
   /* 圆角 */
   --radius-sm: 3px;
@@ -1387,13 +1385,8 @@ header h1 {
   margin-bottom: var(--spacing-xs);
 }
 
-/* 阅读宽度：正文按字符数约束，表格与代码块保持全宽 */
-.stage-body :is(p, ul, ol, blockquote):not(.stage-empty) {
-  max-inline-size: var(--measure);
-}
-
 /* 生命周期样式 */
-/* 宽度由预览面板和正文的 --measure 控制，不再限制整块容器 */
+/* 宽度由预览面板控制，正文铺满可视区域 */
 .lifecycle-container {
   margin-top: 0;
 }
