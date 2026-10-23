@@ -57,6 +57,13 @@
   --spacing-lg: 30px;
   --spacing-xl: 40px;
 
+  /* 布局栅格 - 页面留白与面板边距的唯一来源 */
+  --page-gutter: clamp(16px, 1.4vw, 32px);
+  --pane-pad: clamp(12px, 1vw, 18px);
+  --rail-gutter: clamp(30px, 2.8vw, 44px);
+  /* 正文阅读宽度按字符数约束，避免宽屏下单行过长 */
+  --measure: 78ch;
+
   /* 圆角 */
   --radius-sm: 3px;
   --radius-md: 8px;
@@ -82,7 +89,7 @@
   /* 时间轴布局变量 - 系统性对齐方案 */
   --timeline-axis-left: 10px; /* 时间轴线条的 left 位置 */
   --timeline-axis-width: 4px; /* 时间轴线条的宽度 */
-  --timeline-content-padding: 40px; /* 内容区域的左侧内边距 */
+  --timeline-content-padding: var(--rail-gutter); /* 内容区域的左侧内边距（时间轴轨道） */
   --timeline-marker-width: 70px; /* 标记区域的宽度 */
   --timeline-dot-size: 24px; /* 圆点的尺寸（宽高） */
   --timeline-dot-border-width: 4px; /* 圆点的边框宽度 */
@@ -131,9 +138,9 @@ body {
 }
 
 .container {
-  max-width: 1800px;
-  margin: 0 auto;
-  padding: var(--spacing-sm) var(--spacing-md);
+  /* 宽屏下不设固定上限，两侧留白统一由 --page-gutter 控制 */
+  padding-block: var(--spacing-sm);
+  padding-inline: var(--page-gutter);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -175,10 +182,12 @@ header h1 {
 }
 
 .editor-container {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   flex: 1;
   min-height: 0;
-  background: var(--bg-primary);
+  /* 透明底避免圆角裁切时抗锯齿边缘与白色背景混合出细亮线 */
+  background: transparent;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   overflow: hidden;
@@ -489,10 +498,10 @@ header h1 {
 
 .editor-panel,
 .preview-panel {
-  flex: 1;
   display: flex;
   flex-direction: column;
-  background: var(--bg-secondary);
+  /* 透明底避免在圆角裁切边缘透出浅色抗锯齿细线 */
+  background: transparent;
   min-height: 0;
   min-width: 0;
   max-width: 100%;
@@ -792,6 +801,11 @@ header h1 {
 }
 
 /* 视图切换器 */
+/* 右侧视图标签栏左侧留出适度内边距，避免第一个标签贴边 */
+.preview-panel > .panel-header {
+  padding-left: var(--spacing-xs);
+}
+
 .view-switcher {
   display: flex;
   align-items: center;
@@ -1346,7 +1360,7 @@ header h1 {
 
 .preview-content {
   flex: 1;
-  padding: var(--spacing-sm) var(--spacing-sm) var(--spacing-sm) var(--spacing-sm);
+  padding: var(--pane-pad);
   overflow-y: auto;
   background: var(--bg-primary);
   min-width: 0;
@@ -1373,10 +1387,14 @@ header h1 {
   margin-bottom: var(--spacing-xs);
 }
 
+/* 阅读宽度：正文按字符数约束，表格与代码块保持全宽 */
+.stage-body :is(p, ul, ol, blockquote):not(.stage-empty) {
+  max-inline-size: var(--measure);
+}
+
 /* 生命周期样式 */
+/* 宽度由预览面板和正文的 --measure 控制，不再限制整块容器 */
 .lifecycle-container {
-  max-width: 1200px;
-  margin: 0 auto;
   margin-top: 0;
 }
 
@@ -1413,9 +1431,7 @@ header h1 {
 /* 时间线容器 - 新设计 */
 .timeline-container {
   position: relative;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 var(--spacing-xs);
+  padding-inline: var(--spacing-xs);
 }
 
 /* 时间轴线条（背景） */
@@ -2875,7 +2891,7 @@ header h1 {
 /* 响应式设计 */
 @media (max-width: 1024px) {
   .editor-container {
-    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr);
     height: auto;
     min-height: calc(100vh - 140px);
   }
