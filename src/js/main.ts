@@ -491,12 +491,19 @@ const DELETE_ICON =
 // 保存当前文章（正文 + 元数据）
 // 元数据（标题/保存时间）随正文更新，同步刷新侧边栏列表，
 // 否则从仓库拉取/保存后列表仍显示旧标题，直到切换文章或整页刷新
-function persistArticle(content: string): void {
+// 返回正文是否成功落盘；失败时内容仅在内存中，刷新即丢，调用方应提示用户
+function persistArticle(content: string): boolean {
   const activeId = documentStore.getActiveArticleId();
-  if (!activeId) return;
-  storageManager.manualSave(content);
+  if (!activeId) return false;
+  const saved = storageManager.manualSave(content);
   documentStore.touchArticle(activeId, content);
   renderArticleList();
+  return saved;
+}
+
+// 存储写失败时的统一提示（拉取/保存的正文没有落盘，刷新后会丢失）
+function warnStorageSaveFailed(): void {
+  showSaveNotification('本地保存失败：浏览器存储空间不足，内容尚未落盘，刷新后将丢失。请删除旧报告后重试', 'error');
 }
 
 // 将内容写入编辑器并同步渲染/保存状态/历史
@@ -1344,7 +1351,9 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
         if (result.data?.gistId && !config.gistId) {
           updateConfig({ gistId: result.data.gistId });
         }
-        persistArticle(content);
+        if (!persistArticle(content)) {
+          warnStorageSaveFailed();
+        }
         setStatus('已保存到 Gist', 'success');
         const gistId = result.data?.gistId || config.gistId;
         const location = formatSaveLocation({
@@ -1375,7 +1384,9 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
         content,
       });
       if (result.ok) {
-        persistArticle(content);
+        if (!persistArticle(content)) {
+          warnStorageSaveFailed();
+        }
         setStatus('已保存到 Repo', 'success');
         const shaShort = result.data?.sha ? result.data.sha.substring(0, 7) : 'unknown';
         const location = formatSaveLocation({
@@ -1422,16 +1433,20 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
           changes: { from: 0, to: editor.state.doc.length, insert: result.data },
         });
         setEditorContent(editor, previewContent, result.data);
-        persistArticle(result.data);
-        setStatus('已从 Gist 拉取并同步到本地', 'success');
-        updatePreviewLocation();
-        showSaveNotification(
-          `已拉取：${formatSaveLocation({
-            mode: 'gist',
-            gistId: config.gistId,
-            filename: config.gistFilename,
-          })}`
-        );
+        if (!persistArticle(result.data)) {
+          setStatus('内容已拉取，但本地保存失败', 'error');
+          warnStorageSaveFailed();
+        } else {
+          setStatus('已从 Gist 拉取并同步到本地', 'success');
+          updatePreviewLocation();
+          showSaveNotification(
+            `已拉取：${formatSaveLocation({
+              mode: 'gist',
+              gistId: config.gistId,
+              filename: config.gistFilename,
+            })}`
+          );
+        }
       } else {
         setStatus(result.error || '从 Gist 拉取失败', 'error');
       }
@@ -1453,18 +1468,22 @@ function initGithubIntegration(editor: EditorView, previewContent: HTMLElement):
           changes: { from: 0, to: editor.state.doc.length, insert: result.data },
         });
         setEditorContent(editor, previewContent, result.data);
-        persistArticle(result.data);
-        setStatus('已从 Repo 拉取并同步到本地', 'success');
-        updatePreviewLocation();
-        showSaveNotification(
-          `已拉取：${formatSaveLocation({
-            mode: 'repo',
-            owner: config.repoOwner,
-            repo: config.repoName,
-            branch: config.repoBranch,
-            path,
-          })}`
-        );
+        if (!persistArticle(result.data)) {
+          setStatus('内容已拉取，但本地保存失败', 'error');
+          warnStorageSaveFailed();
+        } else {
+          setStatus('已从 Repo 拉取并同步到本地', 'success');
+          updatePreviewLocation();
+          showSaveNotification(
+            `已拉取：${formatSaveLocation({
+              mode: 'repo',
+              owner: config.repoOwner,
+              repo: config.repoName,
+              branch: config.repoBranch,
+              path,
+            })}`
+          );
+        }
       } else {
         setStatus(result.error || '从 Repo 拉取失败', 'error');
       }

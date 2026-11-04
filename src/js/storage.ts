@@ -67,33 +67,60 @@ export class StorageManager {
 
   /**
    * 保存内容到 LocalStorage
+   * 返回正文是否成功落盘；失败时内容仅存在于编辑器内存，刷新即丢失
    */
-  saveToLocalStorage(content: string): void {
+  saveToLocalStorage(content: string): boolean {
     try {
       localStorage.setItem(this.contentKey(), content);
       localStorage.setItem(this.timestampKey(), new Date().toISOString());
       this.lastContent = content;
       this.addHistoryEntry(content);
+      return true;
     } catch (error) {
       logger.error('保存到 LocalStorage 失败:', error);
-      // 如果存储空间不足，尝试清理旧数据
-      if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-        // 优先清理历史版本（冗余数据），避免正文与时间戳丢失
-        try {
-          localStorage.removeItem(this.historyKey());
-        } catch (historyError) {
-          logger.error('清理历史版本失败:', historyError);
-        }
-        try {
-          localStorage.setItem(this.contentKey(), content);
-          localStorage.setItem(this.timestampKey(), new Date().toISOString());
-          this.lastContent = content;
-          this.addHistoryEntry(content);
-        } catch (retryError) {
-          logger.error('重试保存失败:', retryError);
-        }
+      if (!(error instanceof DOMException && error.name === 'QuotaExceededError')) {
+        return false;
       }
     }
+    // 配额不足：历史版本是冗余副本，按优先级清理后重试（当前文章 → 全部文章）
+    const retryWrite = (): void => {
+      localStorage.setItem(this.contentKey(), content);
+      localStorage.setItem(this.timestampKey(), new Date().toISOString());
+      this.lastContent = content;
+      this.addHistoryEntry(content);
+    };
+    try {
+      localStorage.removeItem(this.historyKey());
+      retryWrite();
+      return true;
+    } catch (error) {
+      logger.error('清理当前文章历史版本后重试保存失败:', error);
+      if (!(error instanceof DOMException && error.name === 'QuotaExceededError')) {
+        return false;
+      }
+    }
+    try {
+      this.removeAllHistories();
+      retryWrite();
+      return true;
+    } catch (error) {
+      logger.error('清理全部历史版本后重试保存失败:', error);
+      return false;
+    }
+  }
+
+  /**
+   * 删除所有文章的历史版本（各文章正文/时间戳保留）
+   */
+  removeAllHistories(): void {
+    const stale: string[] = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('vulncycleinsight_article_') && key.endsWith('_history')) {
+        stale.push(key);
+      }
+    }
+    stale.forEach(key => localStorage.removeItem(key));
   }
 
   /**
@@ -247,10 +274,12 @@ export class StorageManager {
 
   /**
    * 手动保存（立即保存）
+   * 返回正文是否成功落盘
    */
-  manualSave(content: string): void {
-    this.saveToLocalStorage(content);
+  manualSave(content: string): boolean {
+    const saved = this.saveToLocalStorage(content);
     this.updateStatus();
+    return saved;
   }
 
   /**
