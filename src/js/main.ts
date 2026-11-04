@@ -489,11 +489,14 @@ const DELETE_ICON =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>';
 
 // 保存当前文章（正文 + 元数据）
+// 元数据（标题/保存时间）随正文更新，同步刷新侧边栏列表，
+// 否则从仓库拉取/保存后列表仍显示旧标题，直到切换文章或整页刷新
 function persistArticle(content: string): void {
   const activeId = documentStore.getActiveArticleId();
   if (!activeId) return;
   storageManager.manualSave(content);
   documentStore.touchArticle(activeId, content);
+  renderArticleList();
 }
 
 // 将内容写入编辑器并同步渲染/保存状态/历史
