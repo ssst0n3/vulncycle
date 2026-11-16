@@ -16,19 +16,12 @@ changelog:
 | Item             | Details                                          | Note                                        |
 |------------------|--------------------------------------------------|---------------------------------------------|
 | Project          | TODO: [org/repo](https://github.com/org/repo)    |
-| Report Date      | TODO: 1970-01-01                                 |
-| CVE-ID           | TODO: 等待社区                                   |
 | Affect Version   | TODO: vX.Y.Z – vX.Y.Z                            |
-| Fix Version      | TODO: vX.Y.Z                                     |
 | CVSS             | TODO: 0.0 CVSS:4.0/AV:N/AC:L/AT:N/PR:L/UI:N/VC:N/VI:H/VA:L/SC:N/SI:N/SA:N |
 | Reporter         | TODO: [name](https://github.com/username)        |
+| Report Date      | TODO: 1970-01-01                                 |
 
 ## 二、漏洞介绍
-
-- **受影响版本**: TODO: vX.Y.Z – vX.Y.Z
-- **CVSS**: TODO: 0.0 CVSS:4.0/AV:?/...
-- **攻击者权限**: TODO: 权限下界（如 租户级 / 任一已认证账号）
-- **危害概要**: TODO: 一句话
 
 ### 1. 漏洞描述
 
