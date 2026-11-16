@@ -20,7 +20,8 @@ const MIGRATED_KEY = 'vulncycleinsight_migrated_v1';
 
 // 报告类型
 // analysis: 漏洞分析报告（生命周期视角）；hunting: 漏洞挖掘报告（发现过程视角）
-export type ArticleType = 'analysis' | 'hunting';
+// brief: 漏洞简易上报（基本信息/漏洞介绍/漏洞复现）
+export type ArticleType = 'analysis' | 'hunting' | 'brief';
 
 export interface ArticleMeta {
   id: string;
@@ -80,7 +81,8 @@ export class DocumentStore {
    * 获取指定文章类型（缺省 analysis）
    */
   getArticleType(id: string): ArticleType {
-    return this.getArticleById(id)?.type === 'hunting' ? 'hunting' : 'analysis';
+    const type = this.getArticleById(id)?.type;
+    return type === 'hunting' || type === 'brief' ? type : 'analysis';
   }
 
   /**

@@ -525,6 +525,7 @@ function setEditorContent(
 const TEMPLATE_BY_TYPE: Record<ArticleType, string> = {
   analysis: 'TEMPLATE.md',
   hunting: 'TEMPLATE_REPORT.md',
+  brief: 'TEMPLATE_BRIEF.md',
 };
 
 // 当前活动文章类型（无活动文章时按 analysis）
@@ -584,8 +585,18 @@ function toggleNewArticleMenu(sidebar: HTMLElement, anchor: HTMLElement): void {
     void handleNewArticle('hunting');
   });
 
+  const briefItem = document.createElement('button');
+  briefItem.type = 'button';
+  briefItem.textContent = '简易上报';
+  briefItem.title = '创建漏洞简易上报（基本信息/漏洞介绍/漏洞复现）';
+  briefItem.addEventListener('click', () => {
+    menu.remove();
+    void handleNewArticle('brief');
+  });
+
   menu.appendChild(analysisItem);
   menu.appendChild(huntingItem);
+  menu.appendChild(briefItem);
   sidebar.appendChild(menu);
 
   // 点击菜单外部时关闭
